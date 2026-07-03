@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Seattle Aquarium",
+    "category": "aquarium",
+    "url": "https://www.kingcounty.gov/library/passes/seattle-aquarium",
+    "select_selector": "text=Seattle Aquarium",
+    "date_selector": "input[name='reservation_date']",
+    "submit_selector": "button[type='submit']",
+    "success_selector": "text=Reservation confirmed",
+    "notes": "Placeholder selectors — replace with real selectors for the reservation widget."
+  },
+  {
+    "name": "Woodland Park Zoo",
+    "category": "zoo",
+    "url": "https://www.kingcounty.gov/library/passes/woodland-park-zoo",
+    "select_selector": "text=Woodland Park Zoo",
+    "date_selector": "input[name='reservation_date']",
+    "submit_selector": "button[type='submit']",
+    "success_selector": "text=Your reservation is confirmed",
+    "notes": "Example entry for integration testing in dry-run mode."
+  }
+]
