@@ -205,14 +205,32 @@ def _complete_auth_if_needed(page: Any, account: LibraryAccount) -> tuple[bool, 
     page.fill("#username", account.card_number)
     page.fill("#password", account.pin)
     page.click("#s-libapps-login-button")
+    try:
+        page.wait_for_url(re.compile(r"rooms\.kcls\.org/.*/book"), timeout=30000)
+    except Exception:
+        pass
     page.wait_for_load_state("domcontentloaded", timeout=30000)
-    page.wait_for_timeout(1500)
+    page.wait_for_timeout(1000)
 
     if _is_visible(page, "#s-libapps-libauth-form") or _visible_text(page, "invalid|incorrect|not recognized|failed"):
         _capture_artifacts(page, "auth-failed")
         return False, "Library card/PIN authentication did not complete"
 
     return True, "Library card/PIN authentication completed"
+
+
+def _accept_terms_if_needed(page: Any) -> tuple[bool, str]:
+    if not _is_visible(page, "#terms_accept", timeout=1500):
+        return True, "No terms acknowledgement required"
+
+    page.click("#terms_accept")
+    try:
+        page.wait_for_selector("#btn-form-submit", state="visible", timeout=10000)
+    except Exception as exc:
+        _capture_artifacts(page, "terms-accept-failed")
+        return False, f"Terms were accepted, but the reservation form did not appear: {exc}"
+
+    return True, "Terms acknowledged"
 
 
 def _select_option_by_label(page: Any, selectors: list[str], label: str, timeout: int = 2500) -> bool:
@@ -369,52 +387,57 @@ def book_pass_for_date(
         if not auth_success:
             return False, auth_message
 
-        pass_name = str(request.pass_info.get("name", ""))
-        _select_option_by_label(page, ["select", "select[name*='pass' i]", "select[name*='location' i]"], pass_name)
-        _click_text(page, pass_name)
+        terms_success, terms_message = _accept_terms_if_needed(page)
+        if not terms_success:
+            return False, terms_message
 
-        for date_text in _date_variants(request.target_date):
-            if _click_text(page, date_text):
-                break
-        _fill_first(
-            page,
-            [
-                "input[type='date']",
-                "input[name*='date' i]",
-                "input[placeholder*='date' i]",
-            ],
-            request.target_date.isoformat(),
-        )
+        if not _is_visible(page, "#btn-form-submit", timeout=1500):
+            pass_name = str(request.pass_info.get("name", ""))
+            _select_option_by_label(page, ["select", "select[name*='pass' i]", "select[name*='location' i]"], pass_name)
+            _click_text(page, pass_name)
 
-        _fill_first(
-            page,
-            [
-                "input[name*='card' i]",
-                "input[id*='card' i]",
-                "input[placeholder*='card' i]",
-                "input[name*='barcode' i]",
-            ],
-            account.card_number,
-        )
-        _fill_first(
-            page,
-            [
-                "input[name*='pin' i]",
-                "input[id*='pin' i]",
-                "input[placeholder*='pin' i]",
-                "input[type='password']",
-            ],
-            account.pin,
-        )
-        _fill_first(
-            page,
-            [
-                "input[type='email']",
-                "input[name*='email' i]",
-                "input[id*='email' i]",
-            ],
-            account.email,
-        )
+            for date_text in _date_variants(request.target_date):
+                if _click_text(page, date_text):
+                    break
+            _fill_first(
+                page,
+                [
+                    "input[type='date']",
+                    "input[name*='date' i]",
+                    "input[placeholder*='date' i]",
+                ],
+                request.target_date.isoformat(),
+            )
+
+            _fill_first(
+                page,
+                [
+                    "input[name*='card' i]",
+                    "input[id*='card' i]",
+                    "input[placeholder*='card' i]",
+                    "input[name*='barcode' i]",
+                ],
+                account.card_number,
+            )
+            _fill_first(
+                page,
+                [
+                    "input[name*='pin' i]",
+                    "input[id*='pin' i]",
+                    "input[placeholder*='pin' i]",
+                    "input[type='password']",
+                ],
+                account.pin,
+            )
+            _fill_first(
+                page,
+                [
+                    "input[type='email']",
+                    "input[name*='email' i]",
+                    "input[id*='email' i]",
+                ],
+                account.email,
+            )
 
         if _visible_text(page, "unavailable|closed|no passes|no availability"):
             _capture_artifacts(page, f"failed-{request.target_date}-{name}".replace(" ", "-").lower())
@@ -425,18 +448,20 @@ def book_pass_for_date(
             _capture_artifacts(page, f"ready-{request.target_date}-{name}".replace(" ", "-").lower())
             return False, "Stopped before final submit. Set LIBRARY_ALLOW_LIVE_SUBMIT=1 to allow live reservation submission."
 
-        clicked = _click_first(
-            page,
-            [
-                "button[type='submit']",
-                "input[type='submit']",
-                "button:has-text('Reserve')",
-                "button:has-text('Submit')",
-                "button:has-text('Book')",
-                "a:has-text('Reserve')",
-            ],
-            timeout=5000,
-        )
+        clicked = _click_first(page, ["#btn-form-submit"], timeout=5000)
+        if not clicked:
+            clicked = _click_first(
+                page,
+                [
+                    "button[type='submit']",
+                    "input[type='submit']",
+                    "button:has-text('Reserve')",
+                    "button:has-text('Submit')",
+                    "button:has-text('Book')",
+                    "a:has-text('Reserve')",
+                ],
+                timeout=5000,
+            )
         if not clicked:
             _capture_artifacts(page, f"failed-{request.target_date}-{name}".replace(" ", "-").lower())
             return False, "Could not find a final reservation button"
