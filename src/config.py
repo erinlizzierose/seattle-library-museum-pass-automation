@@ -22,14 +22,15 @@ class SchedulerConfig:
 
 
 @dataclass
-class LoginConfig:
-    username: str
-    password: str
+class LibraryAccountConfig:
+    card_number: str
+    pin: str
+    email: str
 
 
 @dataclass
 class AppConfig:
-    login: LoginConfig
+    account: LibraryAccountConfig
     scheduler: SchedulerConfig
 
 
@@ -45,9 +46,10 @@ def load_config() -> AppConfig:
     scheduler = raw.get("scheduler", {})
 
     return AppConfig(
-        login=LoginConfig(
-            username=os.environ.get("LIBRARY_USERNAME", ""),
-            password=os.environ.get("LIBRARY_PASSWORD", ""),
+        account=LibraryAccountConfig(
+            card_number=os.environ.get("LIBRARY_CARD_NUMBER", os.environ.get("LIBRARY_USERNAME", "")),
+            pin=os.environ.get("LIBRARY_PIN", os.environ.get("LIBRARY_PASSWORD", "")),
+            email=os.environ.get("LIBRARY_EMAIL", ""),
         ),
         scheduler=SchedulerConfig(
             run_time=scheduler.get("run_time", "14:00"),

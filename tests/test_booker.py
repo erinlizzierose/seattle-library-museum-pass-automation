@@ -1,0 +1,48 @@
+import unittest
+
+from src.booker import parse_date_availability, parse_pass_cards
+
+
+class KclsParsingTests(unittest.TestCase):
+    def test_parse_pass_cards_extracts_live_pass_metadata(self):
+        html = """
+        <div class="s-lc-eventcard s-lc-passcard">
+          <h2 class="s-lc-eventcard-title">
+            <a href="/passes/abc123">Seattle Aquarium</a>
+          </h2>
+          <img src="https://example.test/aquarium.png" alt="Seattle Aquarium">
+          <a href="/passes/abc123" class="btn s-lc-passcard-book-btn">Book Now</a>
+        </div>
+        """
+
+        passes = parse_pass_cards(html)
+
+        self.assertEqual(len(passes), 1)
+        self.assertEqual(passes[0]["name"], "Seattle Aquarium")
+        self.assertEqual(passes[0]["id"], "abc123")
+        self.assertEqual(passes[0]["url"], "https://rooms.kcls.org/passes/abc123")
+
+    def test_parse_date_availability_extracts_booking_url(self):
+        html = """
+        <div class="s-lc-pass-date-museum">
+          <div class="media-body">
+            <h3 class="media-heading">MOHAI</h3>
+            <a href="/passes/dcb899890d0c/book?pass=02a6adf05e41&amp;date=2026-07-17">
+              Book Digital Pass Now
+            </a>
+          </div>
+        </div>
+        """
+
+        options = parse_date_availability(html)
+
+        self.assertEqual(len(options), 1)
+        self.assertEqual(options[0]["name"], "MOHAI")
+        self.assertEqual(
+            options[0]["booking_url"],
+            "https://rooms.kcls.org/passes/dcb899890d0c/book?pass=02a6adf05e41&date=2026-07-17",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -11,18 +11,20 @@ This project is starting as a scheduler-enabled booking helper for King County l
 - Keep booking logic separate from the scheduler
 - Provide a local dashboard for managing passes/dates and reviewing attempts
 - Log booking attempts to `data/results.jsonl`
+- Refresh real KCLS pass options from the live pass directory
+- Resolve available booking links from the live date-based KCLS page
+- Authenticate with library card number and PIN through LibAuth
 
 ## Short-term additions
 
-- Add browser automation support using Playwright or Selenium
-- Implement the actual login flow and reservation submission
+- Finish and verify the post-auth reservation form submission flow
 - Add retry logic for failed booking attempts
 - Add notifications for success/failure (email, Slack, etc.)
-- Add validation for pass selector configuration before live runs
+- Add validation for credentials and target dates before live runs
+- Add a UI control to refresh passes from KCLS
 
 ## Future improvements
 
-- Scrape available pass list from the library site instead of manual pass config
 - Scrape available dates and compare against desired dates
 - Add a CLI for managing desired passes and dates
 - Replace the local dashboard with a richer web app if remote access is needed

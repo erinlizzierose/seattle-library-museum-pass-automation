@@ -1,22 +1,106 @@
 [
   {
-    "name": "Seattle Aquarium",
-    "category": "aquarium",
-    "url": "https://www.kingcounty.gov/library/passes/seattle-aquarium",
-    "select_selector": "text=Seattle Aquarium",
-    "date_selector": "input[name='reservation_date']",
-    "submit_selector": "button[type='submit']",
-    "success_selector": "text=Reservation confirmed",
-    "notes": "Placeholder selectors — replace with real selectors for the reservation widget."
+    "category": "museum",
+    "id": "6a9d5eb8d7f8",
+    "image_alt": "KidsQuest Children's Museum",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/KidsQuest_Childrens_Museum.png",
+    "name": "KidsQuest Children's Museum",
+    "url": "https://rooms.kcls.org/passes/6a9d5eb8d7f8"
   },
   {
+    "category": "museum",
+    "id": "dcb899890d0c",
+    "image_alt": "MOHAI",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Museum_of_History_and_Industry.png",
+    "name": "MOHAI",
+    "url": "https://rooms.kcls.org/passes/dcb899890d0c"
+  },
+  {
+    "category": "museum",
+    "id": "33c1f0af9b02",
+    "image_alt": "MOPOP",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/new_Museum_of_Pop_Culture.png",
+    "name": "MOPOP",
+    "url": "https://rooms.kcls.org/passes/33c1f0af9b02"
+  },
+  {
+    "category": "museum",
+    "id": "ba4a1c71f547",
+    "image_alt": "Museum of Flight",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/The_Museum_of_Flight2.png",
+    "name": "Museum of Flight",
+    "url": "https://rooms.kcls.org/passes/ba4a1c71f547"
+  },
+  {
+    "category": "museum",
+    "id": "97447a4a8f57",
+    "image_alt": "National Nordic Museum",
+    "image_url": "https://upload.wikimedia.org/wikipedia/en/thumb/3/37/National_Nordic_Museum_Logo.jpg/250px-National_Nordic_Museum_Logo.jpg",
+    "name": "National Nordic Museum",
+    "url": "https://rooms.kcls.org/passes/97447a4a8f57"
+  },
+  {
+    "category": "museum",
+    "id": "b03f547b9c80",
+    "image_alt": "Northwest African American Museum",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/NAAM_2020_Stacked_Logo_Icon___Text_Color.png",
+    "name": "Northwest African American Museum",
+    "url": "https://rooms.kcls.org/passes/b03f547b9c80"
+  },
+  {
+    "category": "museum",
+    "id": "6bccded8c288",
+    "image_alt": "Northwest Railway Museum",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Northwest_Railway_Museum.png",
+    "name": "Northwest Railway Museum",
+    "url": "https://rooms.kcls.org/passes/6bccded8c288"
+  },
+  {
+    "category": "museum",
+    "id": "cd3534a4e786",
+    "image_alt": "Rhododendron Botanical Garden",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Rhododendron_Species_Botanical_Garden.png",
+    "name": "Rhododendron Botanical Garden",
+    "url": "https://rooms.kcls.org/passes/cd3534a4e786"
+  },
+  {
+    "category": "museum",
+    "id": "8e456682901d",
+    "image_alt": "Seattle Aquarium",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Seattle_Aquarium_Logo-Mediterranean-SM.jpg",
+    "name": "Seattle Aquarium",
+    "url": "https://rooms.kcls.org/passes/8e456682901d"
+  },
+  {
+    "category": "museum",
+    "id": "14621cebb10b",
+    "image_alt": "Seattle Art Museum",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Seattle_Art_Museum.png",
+    "name": "Seattle Art Museum",
+    "url": "https://rooms.kcls.org/passes/14621cebb10b"
+  },
+  {
+    "category": "museum",
+    "id": "0cc2150f16b9",
+    "image_alt": "Washington State History Museum",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Washington_State_History_Museum.png",
+    "name": "Washington State History Museum",
+    "url": "https://rooms.kcls.org/passes/0cc2150f16b9"
+  },
+  {
+    "category": "museum",
+    "id": "9ec25160a8a0",
+    "image_alt": "Wing Luke Museum",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Black_over_Transparent_RGB_centered.png",
+    "name": "Wing Luke Museum",
+    "url": "https://rooms.kcls.org/passes/9ec25160a8a0"
+  },
+  {
+    "category": "museum",
+    "id": "15d03dcb51d3",
+    "image_alt": "Woodland Park Zoo",
+    "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Woodland_Park_Zoo.png",
     "name": "Woodland Park Zoo",
-    "category": "zoo",
-    "url": "https://www.kingcounty.gov/library/passes/woodland-park-zoo",
-    "select_selector": "text=Woodland Park Zoo",
-    "date_selector": "input[name='reservation_date']",
-    "submit_selector": "button[type='submit']",
-    "success_selector": "text=Your reservation is confirmed",
-    "notes": "Example entry for integration testing in dry-run mode."
+    "url": "https://rooms.kcls.org/passes/15d03dcb51d3"
   }
 ]

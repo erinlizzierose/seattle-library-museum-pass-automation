@@ -6,5 +6,6 @@ venv/
 .env
 *.log
 data/results.jsonl
+artifacts/
 .DS_Store
 untitled:*.prompt.md

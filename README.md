@@ -9,6 +9,8 @@ A small Python automation project to help reserve King County library passes on 
 - Runs a booking attempt at 2pm local time
 - Provides a local web dashboard for editing passes/dates and reviewing attempts
 - Logs each booking attempt to `data/results.jsonl`
+- Can refresh real KCLS pass options from `https://rooms.kcls.org/passes`
+- Uses Playwright for live KCLS/LibCal booking pages
 - Keeps automation logic separate from the local UI
 
 ## Files
@@ -39,7 +41,16 @@ A small Python automation project to help reserve King County library passes on 
    python -m pip install -e .
    ```
 
-3. Copy `.env.example` to `.env` and update your username/password; then update `config.yaml`, `data/passes.json`, and `data/dates.json`.
+3. Copy `.env.example` to `.env` and update your library card details; then update `config.yaml`, `data/passes.json`, and `data/dates.json`.
+
+   ```bash
+   LIBRARY_CARD_NUMBER=...
+   LIBRARY_PIN=...
+   LIBRARY_EMAIL=...
+   LIBRARY_ALLOW_LIVE_SUBMIT=0
+   ```
+
+   Keep `LIBRARY_ALLOW_LIVE_SUBMIT=0` while testing. The bot will authenticate and prepare the reservation flow, but stop before final submission.
 
 4. Run once:
 
@@ -58,6 +69,33 @@ A small Python automation project to help reserve King County library passes on 
    ```
 
    Then open `http://127.0.0.1:8000`.
+
+## Live KCLS Setup
+
+Install Playwright support:
+
+```bash
+python -m pip install -e ".[automation]"
+python -m playwright install chromium
+```
+
+Refresh the real pass list:
+
+```bash
+python -m src.main --refresh-passes
+```
+
+Capture live KCLS pages for debugging selectors:
+
+```bash
+python -m src.main --inspect-live-site
+```
+
+Live booking is guarded. By default, the bot stops before the final reservation submission and saves screenshots/HTML under `artifacts/`. To allow final submission, set this in `.env` only when you are ready:
+
+```bash
+LIBRARY_ALLOW_LIVE_SUBMIT=1
+```
 
 ## Dashboard
 
