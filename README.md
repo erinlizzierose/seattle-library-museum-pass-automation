@@ -112,6 +112,14 @@ Passes added through the dashboard still need real booking selectors before live
 
 Use `data/desired_bookings.json` for your personal booking queue. The pass catalog in `data/passes.json` can stay as the full KCLS list.
 
+Create your local queue from the example:
+
+```bash
+cp data/desired_bookings.example.json data/desired_bookings.json
+```
+
+`data/desired_bookings.json` is ignored by Git so you do not publish your personal booking plans.
+
 Example:
 
 ```json

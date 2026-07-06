@@ -6,6 +6,7 @@ venv/
 .env
 *.log
 data/results.jsonl
+data/desired_bookings.json
 artifacts/
 .DS_Store
 untitled:*.prompt.md
