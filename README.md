@@ -129,7 +129,7 @@ Example:
 ]
 ```
 
-For each visit date, lower priority numbers run first. Once a booking succeeds for a date, later backup choices for that same date are skipped.
+For each visit month, lower priority numbers run first. Once a booking succeeds for a month, later backup choices for that same visit month are skipped. This matches KCLS's one museum pass per calendar month limit, based on the museum visit date.
 
 Check what would run today:
 

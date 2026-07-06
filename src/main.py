@@ -51,6 +51,10 @@ def build_booking_plan(
     return plan
 
 
+def visit_month_key(target_date) -> str:
+    return target_date.strftime("%Y-%m")
+
+
 def run_once(config, dry_run: bool = False):
     passes = load_passes()
     desired_bookings = load_desired_bookings()
@@ -71,15 +75,16 @@ def run_once(config, dry_run: bool = False):
         pin=config.account.pin,
         email=config.account.email,
     )
-    booked_dates: set[str] = set()
+    booked_months: set[str] = set()
 
     print("Booking plan:")
     for pass_info, target_date in booking_plan:
         print(f"- {target_date.isoformat()}: {pass_info['name']}")
 
     for pass_info, target_date in booking_plan:
-        date_key = target_date.isoformat()
-        if date_key in booked_dates:
+        month_key = visit_month_key(target_date)
+        if month_key in booked_months:
+            print(f"Skipping {pass_info['name']} on {target_date}: already booked a pass for {month_key}.")
             continue
 
         results = attempt_bookings(
@@ -93,7 +98,7 @@ def run_once(config, dry_run: bool = False):
             status = "SUCCESS" if result.success else "FAILED"
             print(f"{request.pass_info['name']} on {request.target_date}: {status} - {result.message}")
             if result.success:
-                booked_dates.add(date_key)
+                booked_months.add(month_key)
 
 
 def show_plan(config) -> None:

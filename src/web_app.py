@@ -249,7 +249,7 @@ def _render_home(notice: str = "") -> bytes:
     <div class="metric"><span>Daily run time</span><strong>{escape(config.scheduler.run_time)}</strong></div>
     <div class="metric"><span>Booking window</span><strong>{config.scheduler.days_ahead} days ahead</strong></div>
     <div class="metric"><span>Next target date</span><strong>{next_release.isoformat()}</strong></div>
-    <div class="metric"><span>Matching desired dates</span><strong>{len(target_dates)}</strong></div>
+    <div class="metric"><span>Matching bookings</span><strong>{len(target_dates)}</strong></div>
   </div>
   <form class="inline" method="post" action="/run-dry">
     <button type="submit">Run Dry Booking</button>
@@ -269,7 +269,7 @@ def _render_home(notice: str = "") -> bytes:
     <button type="submit">Add Booking</button>
   </form>
   <table>
-    <thead><tr><th>Priority</th><th>Date</th><th>Pass</th><th></th></tr></thead>
+    <thead><tr><th>Priority</th><th>Visit Date</th><th>Pass</th><th></th></tr></thead>
     <tbody>{booking_rows}</tbody>
   </table>
 </section>

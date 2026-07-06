@@ -1,6 +1,9 @@
 import unittest
 from datetime import datetime as dt, date
+from io import StringIO
+from types import SimpleNamespace
 from unittest.mock import patch
+import contextlib
 
 import src.main as main
 
@@ -55,6 +58,37 @@ class BookingPlanTests(unittest.TestCase):
         )
 
         self.assertEqual(plan, [])
+
+    @patch("src.main.load_passes")
+    @patch("src.main.load_desired_bookings")
+    @patch("src.main.attempt_bookings")
+    @patch("src.main.datetime")
+    def test_run_once_stops_after_success_for_visit_month(
+        self,
+        mock_datetime,
+        mock_attempt_bookings,
+        mock_load_desired_bookings,
+        mock_load_passes,
+    ):
+        mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
+        mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
+        mock_load_passes.return_value = [{"name": "Woodland Park Zoo"}, {"name": "MOPOP"}]
+        mock_load_desired_bookings.return_value = [
+            {"pass_name": "Woodland Park Zoo", "date": "2026-07-20", "priority": 1},
+            {"pass_name": "MOPOP", "date": "2026-07-20", "priority": 2},
+        ]
+        request = SimpleNamespace(pass_info={"name": "Woodland Park Zoo"}, target_date=date(2026, 7, 20))
+        result = SimpleNamespace(success=True, message="Reserved")
+        mock_attempt_bookings.return_value = [(request, result)]
+        config = SimpleNamespace(
+            scheduler=SimpleNamespace(days_ahead=14),
+            account=SimpleNamespace(card_number="card", pin="pin", email="email@example.com"),
+        )
+
+        with contextlib.redirect_stdout(StringIO()):
+            main.run_once(config)
+
+        self.assertEqual(mock_attempt_bookings.call_count, 1)
 
 
 if __name__ == "__main__":
