@@ -5,7 +5,15 @@ from io import StringIO
 from urllib.parse import parse_qs
 import contextlib
 
-from src.config import load_config, load_dates, load_passes, save_dates, save_passes
+from src.config import (
+    load_config,
+    load_dates,
+    load_desired_bookings,
+    load_passes,
+    save_dates,
+    save_desired_bookings,
+    save_passes,
+)
 from src.main import compute_target_dates, run_once
 from src.results import load_attempts
 
@@ -99,6 +107,15 @@ def _page(content: str, notice: str = "") -> bytes:
       font: inherit;
       color: var(--ink);
     }}
+    select {{
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font: inherit;
+      color: var(--ink);
+      background: white;
+    }}
     button {{
       min-height: 38px;
       border: 1px solid var(--accent);
@@ -160,7 +177,9 @@ def _render_home(notice: str = "") -> bytes:
     config = load_config()
     passes = load_passes()
     dates = load_dates()
-    target_dates = compute_target_dates(dates, config.scheduler.days_ahead)
+    desired_bookings = load_desired_bookings()
+    desired_dates = [str(item.get("date", "")) for item in desired_bookings if item.get("date")]
+    target_dates = compute_target_dates(desired_dates or dates, config.scheduler.days_ahead)
     next_release = datetime.now().date() + timedelta(days=config.scheduler.days_ahead)
     attempts = load_attempts(limit=12)
 
@@ -192,6 +211,26 @@ def _render_home(notice: str = "") -> bytes:
         for index, item in enumerate(passes)
     ) or "<tr><td colspan='4'>No passes configured yet.</td></tr>"
 
+    pass_options = "\n".join(
+        f"""<option value="{escape(item.get("name", ""))}">{escape(item.get("name", ""))}</option>"""
+        for item in passes
+    )
+
+    booking_rows = "\n".join(
+        f"""<tr>
+  <td>{escape(str(item.get("priority", "")))}</td>
+  <td>{escape(item.get("date", ""))}</td>
+  <td>{escape(item.get("pass_name", ""))}</td>
+  <td>
+    <form method="post" action="/desired-bookings/delete">
+      <input type="hidden" name="index" value="{index}">
+      <button class="danger" type="submit">Remove</button>
+    </form>
+  </td>
+</tr>"""
+        for index, item in enumerate(desired_bookings)
+    ) or "<tr><td colspan='4'>No desired bookings yet.</td></tr>"
+
     attempt_rows = "\n".join(
         f"""<tr>
   <td>{escape(item.attempted_at)}</td>
@@ -218,7 +257,25 @@ def _render_home(notice: str = "") -> bytes:
 </section>
 
 <section>
-  <h2>Desired Dates</h2>
+  <h2>Desired Bookings</h2>
+  <form class="inline" method="post" action="/desired-bookings/add">
+    <label>Pass
+      <select name="pass_name" required>
+        {pass_options}
+      </select>
+    </label>
+    <label>Date<input type="date" name="date" required></label>
+    <label>Priority<input type="number" name="priority" value="1" min="1" required></label>
+    <button type="submit">Add Booking</button>
+  </form>
+  <table>
+    <thead><tr><th>Priority</th><th>Date</th><th>Pass</th><th></th></tr></thead>
+    <tbody>{booking_rows}</tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Legacy Dates</h2>
   <form class="inline" method="post" action="/dates/add">
     <label>Date<input type="date" name="date" required></label>
     <button type="submit">Add Date</button>
@@ -289,6 +346,26 @@ class LibraryToolHandler(BaseHTTPRequestHandler):
         if self.path == "/dates/delete":
             date_text = _form_value(form, "date")
             save_dates([item for item in load_dates() if item != date_text])
+            _redirect(self)
+            return
+
+        if self.path == "/desired-bookings/add":
+            booking = {
+                "pass_name": _form_value(form, "pass_name"),
+                "date": _form_value(form, "date"),
+                "priority": int(_form_value(form, "priority") or "1"),
+            }
+            datetime.fromisoformat(booking["date"])
+            save_desired_bookings(load_desired_bookings() + [booking])
+            _redirect(self)
+            return
+
+        if self.path == "/desired-bookings/delete":
+            bookings = load_desired_bookings()
+            index = int(_form_value(form, "index"))
+            if 0 <= index < len(bookings):
+                bookings.pop(index)
+                save_desired_bookings(bookings)
             _redirect(self)
             return
 

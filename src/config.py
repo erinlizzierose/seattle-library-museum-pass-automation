@@ -12,6 +12,7 @@ load_dotenv(BASE_DIR / ".env")
 CONFIG_PATH = BASE_DIR / "config.yaml"
 PASSES_PATH = BASE_DIR / "data" / "passes.json"
 DATES_PATH = BASE_DIR / "data" / "dates.json"
+DESIRED_BOOKINGS_PATH = BASE_DIR / "data" / "desired_bookings.json"
 
 
 @dataclass
@@ -79,6 +80,12 @@ def load_dates() -> list[str]:
     return load_json(DATES_PATH)
 
 
+def load_desired_bookings() -> list[dict[str, Any]]:
+    if not DESIRED_BOOKINGS_PATH.exists():
+        return []
+    return load_json(DESIRED_BOOKINGS_PATH)
+
+
 def save_passes(passes: list[dict[str, Any]]) -> None:
     save_json(PASSES_PATH, passes)
 
@@ -86,3 +93,11 @@ def save_passes(passes: list[dict[str, Any]]) -> None:
 def save_dates(dates: list[str]) -> None:
     unique_dates = sorted(set(dates))
     save_json(DATES_PATH, unique_dates)
+
+
+def save_desired_bookings(bookings: list[dict[str, Any]]) -> None:
+    normalized = sorted(
+        bookings,
+        key=lambda item: (item.get("date", ""), int(item.get("priority", 9999)), item.get("pass_name", "")),
+    )
+    save_json(DESIRED_BOOKINGS_PATH, normalized)

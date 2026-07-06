@@ -101,12 +101,92 @@ LIBRARY_ALLOW_LIVE_SUBMIT=1
 
 The local dashboard lets you:
 
-- Add or remove desired reservation dates
+- Add or remove desired bookings with pass, date, and priority
 - Add or remove passes
 - Review recent booking attempts
 - Run a dry booking attempt without launching a browser
 
 Passes added through the dashboard still need real booking selectors before live automation can reserve them. Use dry-run mode while setting up pass data.
+
+## Desired Bookings
+
+Use `data/desired_bookings.json` for your personal booking queue. The pass catalog in `data/passes.json` can stay as the full KCLS list.
+
+Example:
+
+```json
+[
+  {
+    "date": "2026-07-20",
+    "pass_name": "Woodland Park Zoo",
+    "priority": 1
+  },
+  {
+    "date": "2026-07-20",
+    "pass_name": "MOPOP",
+    "priority": 2
+  }
+]
+```
+
+For each visit date, lower priority numbers run first. Once a booking succeeds for a date, later backup choices for that same date are skipped.
+
+Check what would run today:
+
+```bash
+.venv/bin/python -m src.main --show-plan
+```
+
+Run one guarded attempt:
+
+```bash
+.venv/bin/python -m src.main --run-once
+```
+
+Leave `LIBRARY_ALLOW_LIVE_SUBMIT=0` until you are ready for the app to click the final Reserve button.
+
+## Oracle Cloud Cron Deployment
+
+On an Ubuntu VM, install the app, then add a cron entry that runs shortly after 2pm Pacific and writes logs.
+
+Example cron entry:
+
+```cron
+2 14 * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --run-once >> /home/ubuntu/library-tool/logs/booking.log 2>&1
+```
+
+Use the VM's local timezone or set the cron timezone explicitly. Check it with:
+
+```bash
+date
+timedatectl
+```
+
+For the simplest setup, set the VM timezone to Pacific time:
+
+```bash
+sudo timedatectl set-timezone America/Los_Angeles
+```
+
+View installed cron jobs:
+
+```bash
+crontab -l
+```
+
+Confirm cron ran:
+
+```bash
+tail -100 logs/booking.log
+```
+
+You can also run a one-minute test cron before the real booking day:
+
+```cron
+* * * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --show-plan >> /home/ubuntu/library-tool/logs/cron-test.log 2>&1
+```
+
+Wait a minute, check `logs/cron-test.log`, then remove the test entry.
 
 ## Cloud deployment notes
 
