@@ -2,11 +2,13 @@
   {
     "date": "2026-07-20",
     "pass_name": "Woodland Park Zoo",
-    "priority": 1
+    "priority": 1,
+    "provider": "kcls"
   },
   {
     "date": "2026-07-20",
     "pass_name": "MOPOP",
-    "priority": 2
+    "priority": 2,
+    "provider": "kcls"
   }
 ]

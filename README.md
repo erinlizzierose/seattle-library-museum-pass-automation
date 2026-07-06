@@ -127,17 +127,21 @@ Example:
   {
     "date": "2026-07-20",
     "pass_name": "Woodland Park Zoo",
-    "priority": 1
+    "priority": 1,
+    "provider": "kcls"
   },
   {
     "date": "2026-07-20",
     "pass_name": "MOPOP",
-    "priority": 2
+    "priority": 2,
+    "provider": "kcls"
   }
 ]
 ```
 
 For each visit month, lower priority numbers run first. Once a booking succeeds for a month, later backup choices for that same visit month are skipped. This matches KCLS's one museum pass per calendar month limit, based on the museum visit date.
+
+The dashboard separates KCLS and SPL desired bookings. KCLS live booking is implemented. SPL is shown as a separate queue placeholder, but SPL pass refresh and booking automation still need to be added.
 
 Check what would run today:
 

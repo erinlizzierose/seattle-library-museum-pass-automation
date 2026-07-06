@@ -34,8 +34,8 @@ class BookingPlanTests(unittest.TestCase):
         mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
         mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
         passes = [
-            {"name": "MOPOP"},
-            {"name": "Woodland Park Zoo"},
+            {"name": "MOPOP", "provider": "kcls"},
+            {"name": "Woodland Park Zoo", "provider": "kcls"},
         ]
         desired = [
             {"pass_name": "MOPOP", "date": "2026-07-20", "priority": 2},
@@ -53,9 +53,23 @@ class BookingPlanTests(unittest.TestCase):
 
         plan = main.build_booking_plan(
             [{"pass_name": "MOPOP", "date": "2026-07-21", "priority": 1}],
-            [{"name": "MOPOP"}],
+            [{"name": "MOPOP", "provider": "kcls"}],
             days_ahead=14,
         )
+
+        self.assertEqual(plan, [])
+
+    @patch("src.main.datetime")
+    def test_build_booking_plan_skips_unimplemented_provider(self, mock_datetime):
+        mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
+        mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
+
+        with contextlib.redirect_stdout(StringIO()):
+            plan = main.build_booking_plan(
+                [{"provider": "spl", "pass_name": "Museum of Flight", "date": "2026-07-20", "priority": 1}],
+                [{"provider": "kcls", "name": "Museum of Flight"}],
+                days_ahead=14,
+            )
 
         self.assertEqual(plan, [])
 
@@ -72,7 +86,7 @@ class BookingPlanTests(unittest.TestCase):
     ):
         mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
         mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
-        mock_load_passes.return_value = [{"name": "Woodland Park Zoo"}, {"name": "MOPOP"}]
+        mock_load_passes.return_value = [{"name": "Woodland Park Zoo", "provider": "kcls"}, {"name": "MOPOP", "provider": "kcls"}]
         mock_load_desired_bookings.return_value = [
             {"pass_name": "Woodland Park Zoo", "date": "2026-07-20", "priority": 1},
             {"pass_name": "MOPOP", "date": "2026-07-20", "priority": 2},

@@ -75,6 +75,7 @@ class PassCardParser(HTMLParser):
             if self._card_depth <= 0:
                 if self._current.get("name") and self._current.get("url"):
                     self._current.setdefault("category", "museum")
+                    self._current.setdefault("provider", "kcls")
                     self.passes.append(self._current)
                 self._in_card = False
 

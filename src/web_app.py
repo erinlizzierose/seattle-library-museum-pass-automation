@@ -7,10 +7,8 @@ import contextlib
 
 from src.config import (
     load_config,
-    load_dates,
     load_desired_bookings,
     load_passes,
-    save_dates,
     save_desired_bookings,
     save_passes,
 )
@@ -44,39 +42,52 @@ def _page(content: str, notice: str = "") -> bytes:
   <title>Library Ticket Booker</title>
   <style>
     :root {{
-      color-scheme: light;
-      --ink: #202124;
-      --muted: #646b73;
-      --line: #d8dde3;
-      --panel: #f7f8fa;
-      --accent: #0f766e;
-      --danger: #b42318;
+      color-scheme: dark;
+      --bg: #081f22;
+      --panel: #0d2a2d;
+      --panel-soft: #0f3033;
+      --ink: #f4efe6;
+      --muted: #98aaa7;
+      --line: #29484b;
+      --accent: #d8b77d;
+      --accent-strong: #f0d39c;
+      --danger: #e39b8b;
     }}
     * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
       color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #ffffff;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background: var(--bg);
     }}
     header {{
-      border-bottom: 1px solid var(--line);
-      padding: 24px clamp(16px, 4vw, 40px);
+      padding: 36px clamp(16px, 5vw, 56px) 18px;
+      text-align: center;
     }}
     h1, h2 {{ margin: 0; letter-spacing: 0; }}
-    h1 {{ font-size: 28px; }}
-    h2 {{ font-size: 18px; }}
+    h1 {{
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 6vw, 72px);
+      font-weight: 500;
+    }}
+    h2 {{
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 500;
+    }}
     main {{
       display: grid;
       gap: 24px;
       grid-template-columns: minmax(0, 1fr);
-      padding: 24px clamp(16px, 4vw, 40px) 40px;
-      max-width: 1120px;
+      padding: 24px clamp(16px, 5vw, 56px) 56px;
+      max-width: 1180px;
       margin: 0 auto;
     }}
     section {{
-      border-top: 1px solid var(--line);
-      padding-top: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 24px;
     }}
     .summary {{
       display: grid;
@@ -84,10 +95,10 @@ def _page(content: str, notice: str = "") -> bytes:
       grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     }}
     .metric {{
-      background: var(--panel);
+      background: var(--panel-soft);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 14px;
+      padding: 16px;
     }}
     .metric span, .muted {{ color: var(--muted); font-size: 13px; }}
     .metric strong {{ display: block; margin-top: 6px; font-size: 20px; }}
@@ -106,6 +117,7 @@ def _page(content: str, notice: str = "") -> bytes:
       padding: 8px 10px;
       font: inherit;
       color: var(--ink);
+      background: #0a2427;
     }}
     select {{
       min-height: 38px;
@@ -114,7 +126,7 @@ def _page(content: str, notice: str = "") -> bytes:
       padding: 8px 10px;
       font: inherit;
       color: var(--ink);
-      background: white;
+      background: #0a2427;
     }}
     button {{
       min-height: 38px;
@@ -122,17 +134,18 @@ def _page(content: str, notice: str = "") -> bytes:
       border-radius: 6px;
       padding: 8px 12px;
       background: var(--accent);
-      color: white;
+      color: #071a1d;
       font: inherit;
+      font-weight: 700;
       cursor: pointer;
     }}
     button.secondary {{
-      background: white;
+      background: transparent;
       color: var(--accent);
     }}
     button.danger {{
       border-color: var(--danger);
-      background: white;
+      background: transparent;
       color: var(--danger);
     }}
     table {{
@@ -164,7 +177,7 @@ def _page(content: str, notice: str = "") -> bytes:
 <body>
   <header>
     <h1>Library Ticket Booker</h1>
-    <p class="muted">Local control panel for free pass reservation attempts.</p>
+    <p class="muted">Pass priorities, release windows, and booking attempts.</p>
     {notice_html}
   </header>
   <main>{content}</main>
@@ -176,28 +189,15 @@ def _page(content: str, notice: str = "") -> bytes:
 def _render_home(notice: str = "") -> bytes:
     config = load_config()
     passes = load_passes()
-    dates = load_dates()
     desired_bookings = load_desired_bookings()
     desired_dates = [str(item.get("date", "")) for item in desired_bookings if item.get("date")]
-    target_dates = compute_target_dates(desired_dates or dates, config.scheduler.days_ahead)
+    target_dates = compute_target_dates(desired_dates, config.scheduler.days_ahead)
     next_release = datetime.now().date() + timedelta(days=config.scheduler.days_ahead)
     attempts = load_attempts(limit=12)
 
-    date_rows = "\n".join(
-        f"""<tr>
-  <td>{escape(date_text)}</td>
-  <td>
-    <form method="post" action="/dates/delete">
-      <input type="hidden" name="date" value="{escape(date_text)}">
-      <button class="danger" type="submit">Remove</button>
-    </form>
-  </td>
-</tr>"""
-        for date_text in dates
-    ) or "<tr><td colspan='2'>No desired dates yet.</td></tr>"
-
     pass_rows = "\n".join(
         f"""<tr>
+  <td>{escape(item.get("provider", "kcls").upper())}</td>
   <td>{escape(item.get("name", ""))}</td>
   <td>{escape(item.get("category", ""))}</td>
   <td>{escape(item.get("url", ""))}</td>
@@ -209,15 +209,19 @@ def _render_home(notice: str = "") -> bytes:
   </td>
 </tr>"""
         for index, item in enumerate(passes)
-    ) or "<tr><td colspan='4'>No passes configured yet.</td></tr>"
+    ) or "<tr><td colspan='5'>No passes configured yet.</td></tr>"
 
     pass_options = "\n".join(
-        f"""<option value="{escape(item.get("name", ""))}">{escape(item.get("name", ""))}</option>"""
-        for item in passes
+        f"""<option value="{escape(item.get("name", ""))}" data-provider="{escape(item.get("provider", "kcls"))}">{escape(item.get("name", ""))}</option>"""
+        for item in passes if item.get("provider", "kcls") == "kcls"
     )
 
-    booking_rows = "\n".join(
-        f"""<tr>
+    kcls_bookings = [item for item in desired_bookings if item.get("provider", "kcls") == "kcls"]
+    spl_bookings = [item for item in desired_bookings if item.get("provider") == "spl"]
+
+    def booking_rows(bookings: list[dict[str, object]]) -> str:
+        return "\n".join(
+            f"""<tr>
   <td>{escape(str(item.get("priority", "")))}</td>
   <td>{escape(item.get("date", ""))}</td>
   <td>{escape(item.get("pass_name", ""))}</td>
@@ -228,8 +232,8 @@ def _render_home(notice: str = "") -> bytes:
     </form>
   </td>
 </tr>"""
-        for index, item in enumerate(desired_bookings)
-    ) or "<tr><td colspan='4'>No desired bookings yet.</td></tr>"
+            for index, item in enumerate(desired_bookings) if item in bookings
+        ) or "<tr><td colspan='4'>No desired bookings yet.</td></tr>"
 
     attempt_rows = "\n".join(
         f"""<tr>
@@ -257,8 +261,9 @@ def _render_home(notice: str = "") -> bytes:
 </section>
 
 <section>
-  <h2>Desired Bookings</h2>
+  <h2>KCLS Desired Bookings</h2>
   <form class="inline" method="post" action="/desired-bookings/add">
+    <input type="hidden" name="provider" value="kcls">
     <label>Pass
       <select name="pass_name" required>
         {pass_options}
@@ -270,19 +275,16 @@ def _render_home(notice: str = "") -> bytes:
   </form>
   <table>
     <thead><tr><th>Priority</th><th>Visit Date</th><th>Pass</th><th></th></tr></thead>
-    <tbody>{booking_rows}</tbody>
+    <tbody>{booking_rows(kcls_bookings)}</tbody>
   </table>
 </section>
 
 <section>
-  <h2>Legacy Dates</h2>
-  <form class="inline" method="post" action="/dates/add">
-    <label>Date<input type="date" name="date" required></label>
-    <button type="submit">Add Date</button>
-  </form>
+  <h2>SPL Desired Bookings</h2>
+  <p class="muted">Seattle Public Library support is separate and not wired to live booking yet.</p>
   <table>
-    <thead><tr><th>Date</th><th></th></tr></thead>
-    <tbody>{date_rows}</tbody>
+    <thead><tr><th>Priority</th><th>Visit Date</th><th>Pass</th><th></th></tr></thead>
+    <tbody>{booking_rows(spl_bookings)}</tbody>
   </table>
 </section>
 
@@ -295,7 +297,7 @@ def _render_home(notice: str = "") -> bytes:
     <button type="submit">Add Pass</button>
   </form>
   <table>
-    <thead><tr><th>Name</th><th>Category</th><th>URL</th><th></th></tr></thead>
+    <thead><tr><th>Provider</th><th>Name</th><th>Category</th><th>URL</th><th></th></tr></thead>
     <tbody>{pass_rows}</tbody>
   </table>
 </section>
@@ -336,21 +338,9 @@ class LibraryToolHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         form = _read_form(self)
 
-        if self.path == "/dates/add":
-            date_text = _form_value(form, "date")
-            datetime.fromisoformat(date_text)
-            save_dates(load_dates() + [date_text])
-            _redirect(self)
-            return
-
-        if self.path == "/dates/delete":
-            date_text = _form_value(form, "date")
-            save_dates([item for item in load_dates() if item != date_text])
-            _redirect(self)
-            return
-
         if self.path == "/desired-bookings/add":
             booking = {
+                "provider": _form_value(form, "provider") or "kcls",
                 "pass_name": _form_value(form, "pass_name"),
                 "date": _form_value(form, "date"),
                 "priority": int(_form_value(form, "priority") or "1"),

@@ -20,9 +20,11 @@ def compute_target_dates(dates: list[str], days_ahead: int) -> list[datetime]:
     return selected_dates
 
 
-def find_pass_by_name(passes: list[dict[str, Any]], pass_name: str) -> dict[str, Any] | None:
+def find_pass_by_name(passes: list[dict[str, Any]], pass_name: str, provider: str = "kcls") -> dict[str, Any] | None:
     wanted = pass_name.casefold()
     for pass_info in passes:
+        if str(pass_info.get("provider", "kcls")).casefold() != provider.casefold():
+            continue
         if str(pass_info.get("name", "")).casefold() == wanted:
             return pass_info
     return None
@@ -36,12 +38,20 @@ def build_booking_plan(
     target_dates = {item.isoformat() for item in compute_target_dates([str(item.get("date", "")) for item in desired_bookings], days_ahead)}
     plan: list[tuple[dict[str, Any], datetime]] = []
 
-    for booking in sorted(desired_bookings, key=lambda item: (item.get("date", ""), int(item.get("priority", 9999)))):
+    for booking in sorted(
+        desired_bookings,
+        key=lambda item: (item.get("provider", "kcls"), item.get("date", ""), int(item.get("priority", 9999))),
+    ):
         date_text = str(booking.get("date", ""))
         if date_text not in target_dates:
             continue
 
-        pass_info = find_pass_by_name(passes, str(booking.get("pass_name", "")))
+        provider = str(booking.get("provider", "kcls"))
+        if provider != "kcls":
+            print(f"Skipping {provider} booking until that provider is implemented: {booking.get('pass_name')}")
+            continue
+
+        pass_info = find_pass_by_name(passes, str(booking.get("pass_name", "")), provider=provider)
         if pass_info is None:
             print(f"Skipping unknown pass: {booking.get('pass_name')}")
             continue
@@ -82,9 +92,10 @@ def run_once(config, dry_run: bool = False):
         print(f"- {target_date.isoformat()}: {pass_info['name']}")
 
     for pass_info, target_date in booking_plan:
-        month_key = visit_month_key(target_date)
+        provider_key = str(pass_info.get("provider", "kcls"))
+        month_key = f"{provider_key}:{visit_month_key(target_date)}"
         if month_key in booked_months:
-            print(f"Skipping {pass_info['name']} on {target_date}: already booked a pass for {month_key}.")
+            print(f"Skipping {pass_info['name']} on {target_date}: already booked a {provider_key} pass for {visit_month_key(target_date)}.")
             continue
 
         results = attempt_bookings(

@@ -97,7 +97,12 @@ def save_dates(dates: list[str]) -> None:
 
 def save_desired_bookings(bookings: list[dict[str, Any]]) -> None:
     normalized = sorted(
-        bookings,
-        key=lambda item: (item.get("date", ""), int(item.get("priority", 9999)), item.get("pass_name", "")),
+        ({**item, "provider": item.get("provider", "kcls")} for item in bookings),
+        key=lambda item: (
+            item.get("provider", "kcls"),
+            item.get("date", ""),
+            int(item.get("priority", 9999)),
+            item.get("pass_name", ""),
+        ),
     )
     save_json(DESIRED_BOOKINGS_PATH, normalized)
