@@ -12,7 +12,7 @@ from src.config import (
     save_desired_bookings,
     save_passes,
 )
-from src.main import compute_target_dates, run_once
+from src.main import SUPPORTED_PROVIDERS, compute_target_dates, get_provider_schedule, run_once
 from src.results import load_attempts
 
 
@@ -30,6 +30,15 @@ def _read_form(handler: BaseHTTPRequestHandler) -> dict[str, list[str]]:
     length = int(handler.headers.get("Content-Length", "0"))
     body = handler.rfile.read(length).decode("utf-8")
     return parse_qs(body)
+
+
+def _next_priority(bookings: list[dict[str, object]], provider: str, target_date: str) -> int:
+    priorities = [
+        int(item.get("priority", 0))
+        for item in bookings
+        if item.get("provider", "kcls") == provider and item.get("date") == target_date
+    ]
+    return max(priorities, default=0) + 1
 
 
 def _page(content: str, notice: str = "") -> bytes:
@@ -94,11 +103,49 @@ def _page(content: str, notice: str = "") -> bytes:
       gap: 12px;
       grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     }}
-    .metric {{
+    .rules {{
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      margin-top: 18px;
+    }}
+    .provider-summary {{
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }}
+    .provider-card {{
+      border: 1px solid var(--line);
+      border-radius: 8px;
       background: var(--panel-soft);
+      padding: 18px;
+    }}
+    .provider-card h2 {{
+      margin-bottom: 14px;
+    }}
+    .metric {{
+      background: #0a2427;
       border: 1px solid var(--line);
       border-radius: 8px;
       padding: 16px;
+    }}
+    .rule {{
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }}
+    .rule h3 {{
+      margin: 0 0 8px;
+      color: var(--accent-strong);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }}
+    .rule ul {{
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
     }}
     .metric span, .muted {{ color: var(--muted); font-size: 13px; }}
     .metric strong {{ display: block; margin-top: 6px; font-size: 20px; }}
@@ -190,10 +237,57 @@ def _render_home(notice: str = "") -> bytes:
     config = load_config()
     passes = load_passes()
     desired_bookings = load_desired_bookings()
-    desired_dates = [str(item.get("date", "")) for item in desired_bookings if item.get("date")]
-    target_dates = compute_target_dates(desired_dates, config.scheduler.days_ahead)
-    next_release = datetime.now().date() + timedelta(days=config.scheduler.days_ahead)
     attempts = load_attempts(limit=12)
+
+    provider_labels = {
+        "kcls": "King County Library System",
+        "spl": "Seattle Public Library",
+    }
+    provider_rules = {
+        "kcls": [
+            "New passes are released daily at 2 p.m.",
+            "Passes are available 2 weeks into the future.",
+            "You can reserve one museum pass per calendar month, counted by visit date.",
+            "A reserved but unused pass still counts against that monthly limit.",
+        ],
+        "spl": [
+            "New passes are available daily after 12 p.m.",
+            "The reservation system shows available passes for the next 30 days.",
+            "Each library card holder can reserve one pass per calendar month, counted by visit date.",
+            "Bring the printed or electronic pass and photo ID on the selected visit date.",
+        ],
+    }
+
+    def provider_summary(provider: str) -> str:
+        schedule = get_provider_schedule(config, provider)
+        provider_dates = [
+            str(item.get("date", ""))
+            for item in desired_bookings
+            if item.get("date") and item.get("provider", "kcls") == provider
+        ]
+        target_dates = compute_target_dates(provider_dates, schedule.days_ahead)
+        next_release = datetime.now().date() + timedelta(days=schedule.days_ahead)
+        rules = "\n".join(f"<li>{escape(rule)}</li>" for rule in provider_rules[provider])
+        return f"""
+    <div class="provider-card">
+      <h2>{escape(provider_labels[provider])}</h2>
+      <div class="summary">
+        <div class="metric"><span>Daily run time</span><strong>{escape(schedule.run_time)}</strong></div>
+        <div class="metric"><span>Booking window</span><strong>{schedule.days_ahead} days ahead</strong></div>
+        <div class="metric"><span>Next target date</span><strong>{next_release.isoformat()}</strong></div>
+        <div class="metric"><span>Matching bookings</span><strong>{len(target_dates)}</strong></div>
+      </div>
+      <div class="rule">
+        <h3>{provider.upper()} Rules</h3>
+        <ul>{rules}</ul>
+      </div>
+      <form class="inline" method="post" action="/run-dry">
+        <input type="hidden" name="provider" value="{provider}">
+        <button type="submit">Run {provider.upper()} Dry Booking</button>
+      </form>
+    </div>"""
+
+    provider_summary_cards = "\n".join(provider_summary(provider) for provider in SUPPORTED_PROVIDERS)
 
     pass_rows = "\n".join(
         f"""<tr>
@@ -211,10 +305,14 @@ def _render_home(notice: str = "") -> bytes:
         for index, item in enumerate(passes)
     ) or "<tr><td colspan='5'>No passes configured yet.</td></tr>"
 
-    pass_options = "\n".join(
-        f"""<option value="{escape(item.get("name", ""))}" data-provider="{escape(item.get("provider", "kcls"))}">{escape(item.get("name", ""))}</option>"""
-        for item in passes if item.get("provider", "kcls") == "kcls"
-    )
+    def pass_options_for(provider: str) -> str:
+        return "\n".join(
+            f"""<option value="{escape(item.get("name", ""))}">{escape(item.get("name", ""))}</option>"""
+            for item in passes if item.get("provider", "kcls") == provider
+        )
+
+    kcls_pass_options = pass_options_for("kcls")
+    spl_pass_options = pass_options_for("spl")
 
     kcls_bookings = [item for item in desired_bookings if item.get("provider", "kcls") == "kcls"]
     spl_bookings = [item for item in desired_bookings if item.get("provider") == "spl"]
@@ -235,6 +333,31 @@ def _render_home(notice: str = "") -> bytes:
             for index, item in enumerate(desired_bookings) if item in bookings
         ) or "<tr><td colspan='4'>No desired bookings yet.</td></tr>"
 
+    def next_target_date_for(provider: str) -> str:
+        schedule = get_provider_schedule(config, provider)
+        return (datetime.now().date() + timedelta(days=schedule.days_ahead)).isoformat()
+
+    def next_priority_for(provider: str, target_date: str) -> int:
+        return _next_priority(desired_bookings, provider, target_date)
+
+    def booking_form(provider: str, pass_options: str) -> str:
+        if not pass_options:
+            return f"""<p class="muted">No {provider.upper()} passes loaded yet. Refresh that provider's pass list from the CLI first.</p>"""
+        default_date = next_target_date_for(provider)
+        default_priority = next_priority_for(provider, default_date)
+        return f"""
+  <form class="inline" method="post" action="/desired-bookings/add">
+    <input type="hidden" name="provider" value="{provider}">
+    <label>Pass
+      <select name="pass_name" required>
+        {pass_options}
+      </select>
+    </label>
+    <label>Date<input type="date" name="date" value="{default_date}" required></label>
+    <label>Priority<input type="number" name="priority" value="{default_priority}" min="1" required></label>
+    <button type="submit">Add Booking</button>
+  </form>"""
+
     attempt_rows = "\n".join(
         f"""<tr>
   <td>{escape(item.attempted_at)}</td>
@@ -249,30 +372,12 @@ def _render_home(notice: str = "") -> bytes:
 
     content = f"""
 <section class="full">
-  <div class="summary">
-    <div class="metric"><span>Daily run time</span><strong>{escape(config.scheduler.run_time)}</strong></div>
-    <div class="metric"><span>Booking window</span><strong>{config.scheduler.days_ahead} days ahead</strong></div>
-    <div class="metric"><span>Next target date</span><strong>{next_release.isoformat()}</strong></div>
-    <div class="metric"><span>Matching bookings</span><strong>{len(target_dates)}</strong></div>
-  </div>
-  <form class="inline" method="post" action="/run-dry">
-    <button type="submit">Run Dry Booking</button>
-  </form>
+  <div class="provider-summary">{provider_summary_cards}</div>
 </section>
 
 <section>
-  <h2>KCLS Desired Bookings</h2>
-  <form class="inline" method="post" action="/desired-bookings/add">
-    <input type="hidden" name="provider" value="kcls">
-    <label>Pass
-      <select name="pass_name" required>
-        {pass_options}
-      </select>
-    </label>
-    <label>Date<input type="date" name="date" required></label>
-    <label>Priority<input type="number" name="priority" value="1" min="1" required></label>
-    <button type="submit">Add Booking</button>
-  </form>
+  <h2>King County Library System Desired Bookings</h2>
+  {booking_form("kcls", kcls_pass_options)}
   <table>
     <thead><tr><th>Priority</th><th>Visit Date</th><th>Pass</th><th></th></tr></thead>
     <tbody>{booking_rows(kcls_bookings)}</tbody>
@@ -280,8 +385,8 @@ def _render_home(notice: str = "") -> bytes:
 </section>
 
 <section>
-  <h2>SPL Desired Bookings</h2>
-  <p class="muted">Seattle Public Library support is separate and not wired to live booking yet.</p>
+  <h2>Seattle Public Library Desired Bookings</h2>
+  {booking_form("spl", spl_pass_options)}
   <table>
     <thead><tr><th>Priority</th><th>Visit Date</th><th>Pass</th><th></th></tr></thead>
     <tbody>{booking_rows(spl_bookings)}</tbody>
@@ -291,6 +396,12 @@ def _render_home(notice: str = "") -> bytes:
 <section>
   <h2>Passes</h2>
   <form class="inline" method="post" action="/passes/add">
+    <label>Provider
+      <select name="provider">
+        <option value="kcls">KCLS</option>
+        <option value="spl">SPL</option>
+      </select>
+    </label>
     <label>Name<input name="name" required></label>
     <label>Category<input name="category"></label>
     <label>URL<input name="url"></label>
@@ -339,14 +450,24 @@ class LibraryToolHandler(BaseHTTPRequestHandler):
         form = _read_form(self)
 
         if self.path == "/desired-bookings/add":
+            bookings = load_desired_bookings()
+            provider = _form_value(form, "provider") or "kcls"
+            target_date = _form_value(form, "date")
+            requested_priority = int(_form_value(form, "priority") or "1")
+            used_priorities = {
+                int(item.get("priority", 0))
+                for item in bookings
+                if item.get("provider", "kcls") == provider and item.get("date") == target_date
+            }
+            priority = _next_priority(bookings, provider, target_date) if requested_priority in used_priorities else requested_priority
             booking = {
-                "provider": _form_value(form, "provider") or "kcls",
+                "provider": provider,
                 "pass_name": _form_value(form, "pass_name"),
-                "date": _form_value(form, "date"),
-                "priority": int(_form_value(form, "priority") or "1"),
+                "date": target_date,
+                "priority": priority,
             }
             datetime.fromisoformat(booking["date"])
-            save_desired_bookings(load_desired_bookings() + [booking])
+            save_desired_bookings(bookings + [booking])
             _redirect(self)
             return
 
@@ -364,6 +485,7 @@ class LibraryToolHandler(BaseHTTPRequestHandler):
             name = _form_value(form, "name")
             passes.append(
                 {
+                    "provider": _form_value(form, "provider") or "kcls",
                     "name": name,
                     "category": _form_value(form, "category"),
                     "url": _form_value(form, "url"),
@@ -384,9 +506,10 @@ class LibraryToolHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/run-dry":
+            provider = _form_value(form, "provider") or None
             output = StringIO()
             with contextlib.redirect_stdout(output):
-                run_once(load_config(), dry_run=True)
+                run_once(load_config(), dry_run=True, provider=provider)
             notice = output.getvalue().strip().splitlines()[-1] if output.getvalue().strip() else "Dry run finished."
             body = _render_home(notice=notice)
             self.send_response(200)

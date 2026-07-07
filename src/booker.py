@@ -12,7 +12,31 @@ from src.results import AttemptResult, append_attempt, create_attempt_result
 
 KCLS_RESERVE_BY_LOCATION_URL = "https://rooms.kcls.org/passes"
 KCLS_RESERVE_BY_DATE_URL = "https://rooms.kcls.org/admission"
+SPL_RESERVE_BY_LOCATION_URL = "https://spl.libcal.com/passes"
+SPL_RESERVE_BY_DATE_URL = "https://spl.libcal.com/admission"
 ARTIFACTS_DIR = Path(__file__).resolve().parent.parent / "artifacts"
+
+PROVIDERS: dict[str, dict[str, str]] = {
+    "kcls": {
+        "passes_url": KCLS_RESERVE_BY_LOCATION_URL,
+        "admission_url": KCLS_RESERVE_BY_DATE_URL,
+        "book_url_pattern": r"rooms\.kcls\.org/.*/book",
+        "artifact_prefix": "kcls",
+    },
+    "spl": {
+        "passes_url": SPL_RESERVE_BY_LOCATION_URL,
+        "admission_url": SPL_RESERVE_BY_DATE_URL,
+        "book_url_pattern": r"spl\.libcal\.com/.*/book",
+        "artifact_prefix": "spl",
+    },
+}
+
+
+def provider_settings(provider: str) -> dict[str, str]:
+    key = provider.casefold()
+    if key not in PROVIDERS:
+        raise ValueError(f"Unsupported library provider: {provider}")
+    return PROVIDERS[key]
 
 
 @dataclass
@@ -29,8 +53,10 @@ class LibraryAccount:
 
 
 class PassCardParser(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(self, provider: str = "kcls", passes_url: str = KCLS_RESERVE_BY_LOCATION_URL) -> None:
         super().__init__()
+        self.provider = provider
+        self.passes_url = passes_url
         self.passes: list[dict[str, str]] = []
         self._in_card = False
         self._card_depth = 0
@@ -56,7 +82,7 @@ class PassCardParser(HTMLParser):
         if tag == "h2" and "s-lc-eventcard-title" in classes:
             self._in_title = True
         elif tag == "a" and attr.get("href", "").startswith("/passes/"):
-            self._current.setdefault("url", urljoin(KCLS_RESERVE_BY_LOCATION_URL, attr["href"]))
+            self._current.setdefault("url", urljoin(self.passes_url, attr["href"]))
             self._current.setdefault("id", attr["href"].rstrip("/").split("/")[-1])
         elif tag == "img":
             if attr.get("src"):
@@ -75,7 +101,7 @@ class PassCardParser(HTMLParser):
             if self._card_depth <= 0:
                 if self._current.get("name") and self._current.get("url"):
                     self._current.setdefault("category", "museum")
-                    self._current.setdefault("provider", "kcls")
+                    self._current.setdefault("provider", self.provider)
                     self.passes.append(self._current)
                 self._in_card = False
 
@@ -90,8 +116,9 @@ class PassCardParser(HTMLParser):
 
 
 class DateAvailabilityParser(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(self, admission_url: str = KCLS_RESERVE_BY_DATE_URL) -> None:
         super().__init__()
+        self.admission_url = admission_url
         self.options: list[dict[str, str]] = []
         self._in_museum = False
         self._museum_depth = 0
@@ -117,7 +144,7 @@ class DateAvailabilityParser(HTMLParser):
         if tag == "h3" and "media-heading" in classes:
             self._in_heading = True
         elif tag == "a" and "/book" in attr.get("href", ""):
-            self._current["booking_url"] = urljoin(KCLS_RESERVE_BY_DATE_URL, attr["href"])
+            self._current["booking_url"] = urljoin(self.admission_url, attr["href"])
 
     def handle_endtag(self, tag: str) -> None:
         if not self._in_museum:
@@ -195,27 +222,27 @@ def _is_visible(page: Any, selector: str, timeout: int = 1000) -> bool:
         return False
 
 
-def _complete_auth_if_needed(page: Any, account: LibraryAccount) -> tuple[bool, str]:
+def _complete_auth_if_needed(page: Any, account: LibraryAccount, provider: str = "kcls") -> tuple[bool, str]:
     if not _is_visible(page, "#s-libapps-libauth-form") and not _is_visible(page, "#username"):
         return True, "No auth form detected"
 
     if not account.card_number or not account.pin:
-        _capture_artifacts(page, "auth-missing-credentials")
-        return False, "Auth form detected, but LIBRARY_CARD_NUMBER or LIBRARY_PIN is missing"
+        _capture_artifacts(page, f"{provider}-auth-missing-credentials")
+        return False, f"Auth form detected, but credentials for {provider.upper()} are missing"
 
     page.fill("#username", account.card_number)
     page.fill("#password", account.pin)
     page.click("#s-libapps-login-button")
     try:
-        page.wait_for_url(re.compile(r"rooms\.kcls\.org/.*/book"), timeout=30000)
+        page.wait_for_url(re.compile(provider_settings(provider)["book_url_pattern"]), timeout=30000)
     except Exception:
         pass
     page.wait_for_load_state("domcontentloaded", timeout=30000)
     page.wait_for_timeout(1000)
 
     if _is_visible(page, "#s-libapps-libauth-form") or _visible_text(page, "invalid|incorrect|not recognized|failed"):
-        _capture_artifacts(page, "auth-failed")
-        return False, "Library card/PIN authentication did not complete"
+        _capture_artifacts(page, f"{provider}-auth-failed")
+        return False, f"{provider.upper()} library card/PIN authentication did not complete"
 
     return True, "Library card/PIN authentication completed"
 
@@ -285,27 +312,30 @@ def _goto(page: Any, url: str, selector: str | None = None) -> None:
         page.wait_for_selector(selector, timeout=15000)
 
 
-def parse_pass_cards(html: str) -> list[dict[str, str]]:
-    parser = PassCardParser()
+def parse_pass_cards(html: str, provider: str = "kcls") -> list[dict[str, str]]:
+    settings = provider_settings(provider)
+    parser = PassCardParser(provider=provider.casefold(), passes_url=settings["passes_url"])
     parser.feed(html)
     return parser.passes
 
 
-def parse_date_availability(html: str) -> list[dict[str, str]]:
-    parser = DateAvailabilityParser()
+def parse_date_availability(html: str, provider: str = "kcls") -> list[dict[str, str]]:
+    settings = provider_settings(provider)
+    parser = DateAvailabilityParser(admission_url=settings["admission_url"])
     parser.feed(html)
     return parser.options
 
 
-def fetch_live_passes(headless: bool = True) -> list[dict[str, str]]:
+def fetch_live_passes(provider: str = "kcls", headless: bool = True) -> list[dict[str, str]]:
     _ensure_playwright_installed()
+    settings = provider_settings(provider)
 
     playwright = browser = context = page = None
     try:
         playwright, browser, context, page = _launch_browser(headless=headless)
-        _goto(page, KCLS_RESERVE_BY_LOCATION_URL, selector=".s-lc-passcard")
-        _capture_artifacts(page, "kcls-passes-by-location")
-        return parse_pass_cards(page.content())
+        _goto(page, settings["passes_url"], selector=".s-lc-passcard")
+        _capture_artifacts(page, f"{settings['artifact_prefix']}-passes-by-location")
+        return parse_pass_cards(page.content(), provider=provider)
     finally:
         if context is not None:
             context.close()
@@ -316,13 +346,15 @@ def fetch_live_passes(headless: bool = True) -> list[dict[str, str]]:
 
 
 def find_booking_url_for_date(page: Any, pass_info: dict[str, Any], target_date: date) -> str | None:
-    url = f"{KCLS_RESERVE_BY_DATE_URL}?date={target_date.isoformat()}"
+    provider = str(pass_info.get("provider", "kcls")).casefold()
+    settings = provider_settings(provider)
+    url = f"{settings['admission_url']}?date={target_date.isoformat()}"
     _goto(page, url, selector="#s-lc-pass-availability-content")
-    _capture_artifacts(page, f"kcls-availability-{target_date.isoformat()}")
+    _capture_artifacts(page, f"{settings['artifact_prefix']}-availability-{target_date.isoformat()}")
 
     pass_name = str(pass_info.get("name", "")).casefold()
     pass_id = str(pass_info.get("id", ""))
-    for option in parse_date_availability(page.content()):
+    for option in parse_date_availability(page.content(), provider=provider):
         booking_url = option.get("booking_url", "")
         if pass_id and f"/passes/{pass_id}/book" in booking_url:
             return booking_url
@@ -331,9 +363,10 @@ def find_booking_url_for_date(page: Any, pass_info: dict[str, Any], target_date:
     return None
 
 
-def inspect_reservation_site(headless: bool = True) -> dict[str, Path]:
-    """Open the live KCLS reservation pages and save HTML/screenshots for selector work."""
+def inspect_reservation_site(provider: str = "kcls", headless: bool = True) -> dict[str, Path]:
+    """Open live reservation pages and save HTML/screenshots for selector work."""
     _ensure_playwright_installed()
+    settings = provider_settings(provider)
 
     playwright = browser = context = page = None
     artifacts: dict[str, Path] = {}
@@ -341,8 +374,8 @@ def inspect_reservation_site(headless: bool = True) -> dict[str, Path]:
         playwright, browser, context, page = _launch_browser(headless=headless)
 
         for slug, url in (
-            ("kcls-passes-by-location", KCLS_RESERVE_BY_LOCATION_URL),
-            ("kcls-passes-by-date", KCLS_RESERVE_BY_DATE_URL),
+            (f"{settings['artifact_prefix']}-passes-by-location", settings["passes_url"]),
+            (f"{settings['artifact_prefix']}-passes-by-date", settings["admission_url"]),
         ):
             _goto(page, url)
             artifacts.update({f"{slug}-{key}": value for key, value in _capture_artifacts(page, slug).items()})
@@ -384,7 +417,8 @@ def book_pass_for_date(
             return False, "No available booking link found for this pass/date"
 
         _goto(page, direct_url)
-        auth_success, auth_message = _complete_auth_if_needed(page, account)
+        provider = str(request.pass_info.get("provider", "kcls")).casefold()
+        auth_success, auth_message = _complete_auth_if_needed(page, account, provider=provider)
         if not auth_success:
             return False, auth_message
 

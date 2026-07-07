@@ -21,6 +21,23 @@ class KclsParsingTests(unittest.TestCase):
         self.assertEqual(passes[0]["name"], "Seattle Aquarium")
         self.assertEqual(passes[0]["id"], "abc123")
         self.assertEqual(passes[0]["url"], "https://rooms.kcls.org/passes/abc123")
+        self.assertEqual(passes[0]["provider"], "kcls")
+
+    def test_parse_pass_cards_uses_spl_base_url(self):
+        html = """
+        <div class="s-lc-eventcard s-lc-passcard">
+          <h2 class="s-lc-eventcard-title">
+            <a href="/passes/Zoo">Woodland Park Zoo</a>
+          </h2>
+          <a href="/passes/Zoo" class="btn s-lc-passcard-book-btn">Book Now</a>
+        </div>
+        """
+
+        passes = parse_pass_cards(html, provider="spl")
+
+        self.assertEqual(passes[0]["provider"], "spl")
+        self.assertEqual(passes[0]["id"], "Zoo")
+        self.assertEqual(passes[0]["url"], "https://spl.libcal.com/passes/Zoo")
 
     def test_parse_date_availability_extracts_booking_url(self):
         html = """
@@ -41,6 +58,25 @@ class KclsParsingTests(unittest.TestCase):
         self.assertEqual(
             options[0]["booking_url"],
             "https://rooms.kcls.org/passes/dcb899890d0c/book?pass=02a6adf05e41&date=2026-07-17",
+        )
+
+    def test_parse_date_availability_uses_spl_base_url(self):
+        html = """
+        <div class="s-lc-pass-date-museum">
+          <div class="media-body">
+            <h3 class="media-heading">Woodland Park Zoo</h3>
+            <a href="/passes/Zoo/book?pass=abc&amp;date=2026-07-17">
+              Book Digital Pass Now
+            </a>
+          </div>
+        </div>
+        """
+
+        options = parse_date_availability(html, provider="spl")
+
+        self.assertEqual(
+            options[0]["booking_url"],
+            "https://spl.libcal.com/passes/Zoo/book?pass=abc&date=2026-07-17",
         )
 
 

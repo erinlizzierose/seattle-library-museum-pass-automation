@@ -102,5 +102,158 @@
     "image_url": "https://d2jv02qf7xgjwx.cloudfront.net/customers/3774/images/Woodland_Park_Zoo.png",
     "name": "Woodland Park Zoo",
     "url": "https://rooms.kcls.org/passes/15d03dcb51d3"
+  },
+  {
+    "category": "museum",
+    "id": "Burke",
+    "image_alt": "Burke Museum of Natural History and Culture",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_11_40.jpg",
+    "name": "Burke Museum of Natural History and Culture",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/Burke"
+  },
+  {
+    "category": "museum",
+    "id": "CWB",
+    "image_alt": "Center for Wooden Boats",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_17_43.jpg",
+    "name": "Center for Wooden Boats",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/CWB"
+  },
+  {
+    "category": "museum",
+    "id": "Henry",
+    "image_alt": "Henry Art Gallery",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_14_56.jpg",
+    "name": "Henry Art Gallery",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/Henry"
+  },
+  {
+    "category": "museum",
+    "id": "Flight",
+    "image_alt": "Museum of Flight",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_18_06.jpg",
+    "name": "Museum of Flight",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/Flight"
+  },
+  {
+    "category": "museum",
+    "id": "MOHAI",
+    "image_alt": "Museum of History & Industry",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_18_37.jpg",
+    "name": "Museum of History & Industry",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/MOHAI"
+  },
+  {
+    "category": "museum",
+    "id": "MOPOP",
+    "image_alt": "Museum of Pop Culture",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_15_28.jpg",
+    "name": "Museum of Pop Culture",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/MOPOP"
+  },
+  {
+    "category": "museum",
+    "id": "NationalNordic",
+    "image_alt": "National Nordic Museum",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_15_58.jpg",
+    "name": "National Nordic Museum",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/NationalNordic"
+  },
+  {
+    "category": "museum",
+    "id": "NAANNW",
+    "image_alt": "Northwest African American Museum",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_16_26.jpg",
+    "name": "Northwest African American Museum",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/NAANNW"
+  },
+  {
+    "category": "museum",
+    "id": "NWRailway",
+    "image_alt": "Northwest Railway Museum",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_10_30_12_04_32.jpg",
+    "name": "Northwest Railway Museum",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/NWRailway"
+  },
+  {
+    "category": "museum",
+    "id": "PacSci",
+    "image_alt": "Pacific Science Center",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2026_03_24_10_28_31.jpg",
+    "name": "Pacific Science Center",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/PacSci"
+  },
+  {
+    "category": "museum",
+    "id": "Aquarium",
+    "image_alt": "Seattle Aquarium",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_09_25_11_23_15.jpg",
+    "name": "Seattle Aquarium",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/Aquarium"
+  },
+  {
+    "category": "museum",
+    "id": "SAM",
+    "image_alt": "Seattle Art Museum",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_18_59.jpg",
+    "name": "Seattle Art Museum",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/SAM"
+  },
+  {
+    "category": "museum",
+    "id": "Childrens",
+    "image_alt": "Seattle Children's Museum",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_17_26.jpg",
+    "name": "Seattle Children's Museum",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/Childrens"
+  },
+  {
+    "category": "museum",
+    "id": "JapaneseGarden",
+    "image_alt": "Seattle Japanese Garden",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_07_24_09_25_27.jpg",
+    "name": "Seattle Japanese Garden",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/JapaneseGarden"
+  },
+  {
+    "category": "museum",
+    "id": "VolunteerParkConservatory",
+    "image_alt": "Volunteer Park Conservatory",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_07_24_09_32_47.jpg",
+    "name": "Volunteer Park Conservatory",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/VolunteerParkConservatory"
+  },
+  {
+    "category": "museum",
+    "id": "WingLuke",
+    "image_alt": "Wing Luke Museum of the Asian Pacific American Experience",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_19_34.jpg",
+    "name": "Wing Luke Museum of the Asian Pacific American Experience",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/WingLuke"
+  },
+  {
+    "category": "museum",
+    "id": "Zoo",
+    "image_alt": "Woodland Park Zoo",
+    "image_url": "https://d68g328n4ug0e.cloudfront.net/misc/6790/pass/museum/2025_06_11_08_19_50.jpg",
+    "name": "Woodland Park Zoo",
+    "provider": "spl",
+    "url": "https://spl.libcal.com/passes/Zoo"
   }
 ]

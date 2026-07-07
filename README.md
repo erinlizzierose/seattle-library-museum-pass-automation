@@ -1,6 +1,6 @@
 # Library Ticket Booker
 
-A small Python automation project to help reserve King County library passes on the daily 2pm release.
+A small Python automation project to help reserve KCLS and Seattle Public Library museum passes on the daily release window.
 
 ## What this does
 
@@ -9,8 +9,8 @@ A small Python automation project to help reserve King County library passes on 
 - Runs a booking attempt at 2pm local time
 - Provides a local web dashboard for editing passes/dates and reviewing attempts
 - Logs each booking attempt to `data/results.jsonl`
-- Can refresh real KCLS pass options from `https://rooms.kcls.org/passes`
-- Uses Playwright for live KCLS/LibCal booking pages
+- Can refresh real KCLS and SPL pass options from their LibCal pass directories
+- Uses Playwright for live LibCal booking pages
 - Keeps automation logic separate from the local UI
 
 ## Files
@@ -44,9 +44,14 @@ A small Python automation project to help reserve King County library passes on 
 3. Copy `.env.example` to `.env` and update your library card details; then update `config.yaml`, `data/passes.json`, and `data/dates.json`.
 
    ```bash
-   LIBRARY_CARD_NUMBER=...
-   LIBRARY_PIN=...
-   LIBRARY_EMAIL=...
+   KCLS_LIBRARY_CARD_NUMBER=...
+   KCLS_LIBRARY_PIN=...
+   KCLS_LIBRARY_EMAIL=...
+
+   SPL_LIBRARY_CARD_NUMBER=...
+   SPL_LIBRARY_PIN=...
+   SPL_LIBRARY_EMAIL=...
+
    LIBRARY_ALLOW_LIVE_SUBMIT=0
    ```
 
@@ -70,7 +75,7 @@ A small Python automation project to help reserve King County library passes on 
 
    Then open `http://127.0.0.1:8000`.
 
-## Live KCLS Setup
+## Live Provider Setup
 
 Install Playwright support:
 
@@ -82,13 +87,15 @@ python -m playwright install chromium
 Refresh the real pass list:
 
 ```bash
-python -m src.main --refresh-passes
+python -m src.main --refresh-passes --provider kcls
+python -m src.main --refresh-passes --provider spl
 ```
 
-Capture live KCLS pages for debugging selectors:
+Capture live pages for debugging selectors:
 
 ```bash
-python -m src.main --inspect-live-site
+python -m src.main --inspect-live-site --provider kcls
+python -m src.main --inspect-live-site --provider spl
 ```
 
 Live booking is guarded. By default, the bot stops before the final reservation submission and saves screenshots/HTML under `artifacts/`. To allow final submission, set this in `.env` only when you are ready:
@@ -110,7 +117,7 @@ Passes added through the dashboard still need real booking selectors before live
 
 ## Desired Bookings
 
-Use `data/desired_bookings.json` for your personal booking queue. The pass catalog in `data/passes.json` can stay as the full KCLS list.
+Use `data/desired_bookings.json` for your personal booking queue. The pass catalog in `data/passes.json` can stay as the full provider-tagged KCLS/SPL list.
 
 Create your local queue from the example:
 
@@ -141,7 +148,25 @@ Example:
 
 For each visit month, lower priority numbers run first. Once a booking succeeds for a month, later backup choices for that same visit month are skipped. This matches KCLS's one museum pass per calendar month limit, based on the museum visit date.
 
-The dashboard separates KCLS and SPL desired bookings. KCLS live booking is implemented. SPL is shown as a separate queue placeholder, but SPL pass refresh and booking automation still need to be added.
+The dashboard separates KCLS and SPL desired bookings. Both providers use separate pass lists and separate credentials. A successful booking skips later backup choices for the same provider and visit month.
+
+## Library Rules
+
+KCLS:
+
+- New passes are released daily at 2 p.m.
+- Passes are available 2 weeks into the future.
+- The default local run time is `14:00`.
+- You can reserve one museum pass per calendar month, counted by visit date.
+- A reserved but unused pass still counts against the monthly limit.
+
+SPL:
+
+- New passes are available daily after 12 p.m.
+- The reservation system shows available passes for the next 30 days.
+- The default local run time is `12:00`.
+- Each library card holder can reserve one pass per calendar month, counted by visit date.
+- Bring the printed or electronic pass and photo ID on the selected visit date.
 
 Check what would run today:
 
@@ -161,10 +186,11 @@ Leave `LIBRARY_ALLOW_LIVE_SUBMIT=0` until you are ready for the app to click the
 
 On an Ubuntu VM, install the app, then add a cron entry that runs shortly after 2pm Pacific and writes logs.
 
-Example cron entry:
+Example cron entries:
 
 ```cron
-2 14 * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --run-once >> /home/ubuntu/library-tool/logs/booking.log 2>&1
+2 12 * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --run-once --provider spl >> /home/ubuntu/library-tool/logs/spl-booking.log 2>&1
+2 14 * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --run-once --provider kcls >> /home/ubuntu/library-tool/logs/kcls-booking.log 2>&1
 ```
 
 Use the VM's local timezone or set the cron timezone explicitly. Check it with:

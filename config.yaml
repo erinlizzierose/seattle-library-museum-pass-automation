@@ -2,3 +2,10 @@ scheduler:
   run_time: "14:00"
   days_ahead: 14
   timezone: "local"
+  providers:
+    kcls:
+      run_time: "14:00"
+      days_ahead: 14
+    spl:
+      run_time: "12:00"
+      days_ahead: 30

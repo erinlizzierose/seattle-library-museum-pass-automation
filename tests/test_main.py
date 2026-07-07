@@ -6,6 +6,7 @@ from unittest.mock import patch
 import contextlib
 
 import src.main as main
+from src.web_app import _next_priority
 
 
 class ComputeTargetDatesTests(unittest.TestCase):
@@ -60,18 +61,72 @@ class BookingPlanTests(unittest.TestCase):
         self.assertEqual(plan, [])
 
     @patch("src.main.datetime")
-    def test_build_booking_plan_skips_unimplemented_provider(self, mock_datetime):
+    def test_build_booking_plan_includes_spl_provider(self, mock_datetime):
         mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
         mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
 
-        with contextlib.redirect_stdout(StringIO()):
-            plan = main.build_booking_plan(
-                [{"provider": "spl", "pass_name": "Museum of Flight", "date": "2026-07-20", "priority": 1}],
-                [{"provider": "kcls", "name": "Museum of Flight"}],
-                days_ahead=14,
-            )
+        plan = main.build_booking_plan(
+            [{"provider": "spl", "pass_name": "Museum of Flight", "date": "2026-07-20", "priority": 1}],
+            [{"provider": "spl", "name": "Museum of Flight"}],
+            days_ahead=14,
+        )
 
-        self.assertEqual(plan, [])
+        self.assertEqual(plan[0][0]["provider"], "spl")
+        self.assertEqual(plan[0][0]["name"], "Museum of Flight")
+
+    def test_merge_provider_passes_replaces_only_selected_provider(self):
+        merged = main.merge_provider_passes(
+            [
+                {"provider": "kcls", "name": "MOPOP"},
+                {"provider": "spl", "name": "Old SPL Pass"},
+                {"name": "Legacy KCLS Pass"},
+            ],
+            [{"provider": "spl", "name": "New SPL Pass"}],
+            provider="spl",
+        )
+
+        self.assertEqual([item["name"] for item in merged], ["MOPOP", "Legacy KCLS Pass", "New SPL Pass"])
+
+    @patch("src.main.datetime")
+    def test_build_booking_plan_for_config_uses_provider_windows(self, mock_datetime):
+        mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
+        mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
+        config = SimpleNamespace(
+            scheduler=SimpleNamespace(days_ahead=14),
+            schedules={
+                "kcls": SimpleNamespace(days_ahead=14),
+                "spl": SimpleNamespace(days_ahead=30),
+            },
+        )
+
+        plan = main.build_booking_plan_for_config(
+            [
+                {"provider": "kcls", "pass_name": "MOPOP", "date": "2026-07-20", "priority": 1},
+                {"provider": "spl", "pass_name": "Museum of Flight", "date": "2026-08-05", "priority": 1},
+            ],
+            [
+                {"provider": "kcls", "name": "MOPOP"},
+                {"provider": "spl", "name": "Museum of Flight"},
+            ],
+            config,
+        )
+
+        self.assertEqual([(item[0]["provider"], item[1]) for item in plan], [("kcls", date(2026, 7, 20)), ("spl", date(2026, 8, 5))])
+
+    def test_next_priority_is_scoped_to_provider_and_date(self):
+        self.assertEqual(
+            _next_priority(
+                [
+                    {"provider": "kcls", "date": "2026-07-20", "priority": 1},
+                    {"provider": "kcls", "date": "2026-07-20", "priority": 2},
+                    {"provider": "spl", "date": "2026-07-20", "priority": 1},
+                    {"provider": "kcls", "date": "2026-07-21", "priority": 1},
+                ],
+                "kcls",
+                "2026-07-20",
+            ),
+            3,
+        )
 
     @patch("src.main.load_passes")
     @patch("src.main.load_desired_bookings")
@@ -97,6 +152,7 @@ class BookingPlanTests(unittest.TestCase):
         config = SimpleNamespace(
             scheduler=SimpleNamespace(days_ahead=14),
             account=SimpleNamespace(card_number="card", pin="pin", email="email@example.com"),
+            accounts={"kcls": SimpleNamespace(card_number="card", pin="pin", email="email@example.com")},
         )
 
         with contextlib.redirect_stdout(StringIO()):
