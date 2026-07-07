@@ -261,6 +261,30 @@ def _accept_terms_if_needed(page: Any) -> tuple[bool, str]:
     return True, "Terms acknowledged"
 
 
+def _fill_required_email_if_needed(page: Any, account: LibraryAccount, artifact_prefix: str) -> tuple[bool, str]:
+    if not _is_visible(page, "input[type='email']", timeout=1000):
+        return True, "No email field detected"
+
+    if not account.email:
+        _capture_artifacts(page, f"{artifact_prefix}-missing-email")
+        return False, "Email is required on this booking form, but no email is configured for this provider"
+
+    filled = _fill_first(
+        page,
+        [
+            "input[type='email']",
+            "input[name*='email' i]",
+            "input[id*='email' i]",
+        ],
+        account.email,
+    )
+    if not filled:
+        _capture_artifacts(page, f"{artifact_prefix}-email-fill-failed")
+        return False, "Email is required on this booking form, but the email field could not be filled"
+
+    return True, "Email filled"
+
+
 def _select_option_by_label(page: Any, selectors: list[str], label: str, timeout: int = 2500) -> bool:
     if not label:
         return False
@@ -426,6 +450,11 @@ def book_pass_for_date(
         if not terms_success:
             return False, terms_message
 
+        artifact_prefix = f"{provider}-{request.target_date}-{name}".replace(" ", "-").lower()
+        email_success, email_message = _fill_required_email_if_needed(page, account, artifact_prefix)
+        if not email_success:
+            return False, email_message
+
         if not _is_visible(page, "#btn-form-submit", timeout=1500):
             pass_name = str(request.pass_info.get("name", ""))
             _select_option_by_label(page, ["select", "select[name*='pass' i]", "select[name*='location' i]"], pass_name)
@@ -474,6 +503,10 @@ def book_pass_for_date(
                 account.email,
             )
 
+            email_success, email_message = _fill_required_email_if_needed(page, account, artifact_prefix)
+            if not email_success:
+                return False, email_message
+
         if _visible_text(page, "unavailable|closed|no passes|no availability"):
             _capture_artifacts(page, f"failed-{request.target_date}-{name}".replace(" ", "-").lower())
             return False, "Pass/date appears unavailable"
@@ -503,6 +536,9 @@ def book_pass_for_date(
 
         page.wait_for_load_state("networkidle", timeout=15000)
         _capture_artifacts(page, f"submitted-{request.target_date}-{name}".replace(" ", "-").lower())
+
+        if _is_visible(page, "#s-lc-bform", timeout=1000) or _is_visible(page, "input[type='email']", timeout=1000):
+            return False, "Submission did not leave the booking form; check required fields or validation errors"
 
         if _visible_text(page, "confirmed|confirmation|reserved|success"):
             return True, "Reservation confirmation was detected"
