@@ -113,6 +113,32 @@ class BookingPlanTests(unittest.TestCase):
 
         self.assertEqual([(item[0]["provider"], item[1]) for item in plan], [("kcls", date(2026, 7, 20)), ("spl", date(2026, 8, 5))])
 
+    @patch("src.main.datetime")
+    def test_build_booking_plan_for_config_preserves_priority_order(self, mock_datetime):
+        mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
+        mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
+        config = SimpleNamespace(
+            scheduler=SimpleNamespace(days_ahead=14),
+            schedules={"kcls": SimpleNamespace(days_ahead=14)},
+        )
+
+        plan = main.build_booking_plan_for_config(
+            [
+                {"provider": "kcls", "pass_name": "MOPOP", "date": "2026-07-20", "priority": 3},
+                {"provider": "kcls", "pass_name": "Woodland Park Zoo", "date": "2026-07-20", "priority": 1},
+                {"provider": "kcls", "pass_name": "Seattle Aquarium", "date": "2026-07-20", "priority": 2},
+            ],
+            [
+                {"provider": "kcls", "name": "MOPOP"},
+                {"provider": "kcls", "name": "Woodland Park Zoo"},
+                {"provider": "kcls", "name": "Seattle Aquarium"},
+            ],
+            config,
+            provider="kcls",
+        )
+
+        self.assertEqual([item[0]["name"] for item in plan], ["Woodland Park Zoo", "Seattle Aquarium", "MOPOP"])
+
     def test_next_priority_is_scoped_to_provider_and_date(self):
         self.assertEqual(
             _next_priority(

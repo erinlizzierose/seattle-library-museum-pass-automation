@@ -100,7 +100,7 @@ def build_booking_plan_for_config(
                 provider=provider_key,
             )
         )
-    return sorted(plan, key=lambda item: (item[0].get("provider", "kcls"), item[1], item[0].get("name", "")))
+    return plan
 
 
 def visit_month_key(target_date) -> str:
