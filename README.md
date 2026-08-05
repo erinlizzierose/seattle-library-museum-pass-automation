@@ -1,4 +1,4 @@
-# Library Ticket Booker
+# Seattle Library Museum Passes Automation
 
 A local Python automation app for booking free museum and attraction passes from the King County Library System and The Seattle Public Library.
 
