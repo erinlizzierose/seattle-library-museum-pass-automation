@@ -85,18 +85,20 @@ def _page(content: str, notice: str = "") -> bytes:
       font-weight: 500;
     }}
     main {{
+      width: min(100%, 1180px);
       display: grid;
       gap: 24px;
       grid-template-columns: minmax(0, 1fr);
       padding: 24px clamp(16px, 5vw, 56px) 56px;
-      max-width: 1180px;
       margin: 0 auto;
     }}
     section {{
+      min-width: 0;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--panel);
       padding: 24px;
+      overflow-x: auto;
     }}
     .summary {{
       display: grid;
@@ -115,6 +117,7 @@ def _page(content: str, notice: str = "") -> bytes:
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     }}
     .provider-card {{
+      min-width: 0;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--panel-soft);
@@ -197,6 +200,7 @@ def _page(content: str, notice: str = "") -> bytes:
     }}
     table {{
       width: 100%;
+      table-layout: fixed;
       border-collapse: collapse;
       margin-top: 12px;
     }}
@@ -206,6 +210,7 @@ def _page(content: str, notice: str = "") -> bytes:
       text-align: left;
       vertical-align: top;
       font-size: 14px;
+      overflow-wrap: anywhere;
     }}
     th {{ color: var(--muted); font-weight: 600; }}
     .notice {{
@@ -314,9 +319,9 @@ def _render_home(notice: str = "") -> bytes:
 
     provider_summary_cards = "\n".join(provider_summary(provider) for provider in SUPPORTED_PROVIDERS)
 
-    pass_rows = "\n".join(
-        f"""<tr>
-  <td>{escape(item.get("provider", "kcls").upper())}</td>
+    def pass_rows_for(provider: str) -> str:
+        return "\n".join(
+            f"""<tr>
   <td>{escape(item.get("name", ""))}</td>
   <td>{escape(item.get("category", ""))}</td>
   <td>{escape(item.get("url", ""))}</td>
@@ -327,8 +332,25 @@ def _render_home(notice: str = "") -> bytes:
     </form>
   </td>
 </tr>"""
-        for index, item in enumerate(passes)
-    ) or "<tr><td colspan='5'>No passes configured yet.</td></tr>"
+            for index, item in enumerate(passes) if item.get("provider", "kcls") == provider
+        ) or "<tr><td colspan='4'>No passes configured yet.</td></tr>"
+
+    def pass_management_section(provider: str) -> str:
+        return f"""
+<section>
+  <h2>{escape(provider_labels[provider])} Passes</h2>
+  <form class="inline" method="post" action="/passes/add">
+    <input type="hidden" name="provider" value="{provider}">
+    <label>Name<input name="name" required></label>
+    <label>Category<input name="category"></label>
+    <label>URL<input name="url"></label>
+    <button type="submit">Add Pass</button>
+  </form>
+  <table>
+    <thead><tr><th>Name</th><th>Category</th><th>URL</th><th></th></tr></thead>
+    <tbody>{pass_rows_for(provider)}</tbody>
+  </table>
+</section>"""
 
     def pass_options_for(provider: str) -> str:
         return "\n".join(
@@ -438,25 +460,9 @@ def _render_home(notice: str = "") -> bytes:
   </table>
 </section>
 
-<section>
-  <h2>Passes</h2>
-  <form class="inline" method="post" action="/passes/add">
-    <label>Provider
-      <select name="provider">
-        <option value="kcls">KCLS</option>
-        <option value="spl">SPL</option>
-      </select>
-    </label>
-    <label>Name<input name="name" required></label>
-    <label>Category<input name="category"></label>
-    <label>URL<input name="url"></label>
-    <button type="submit">Add Pass</button>
-  </form>
-  <table>
-    <thead><tr><th>Provider</th><th>Name</th><th>Category</th><th>URL</th><th></th></tr></thead>
-    <tbody>{pass_rows}</tbody>
-  </table>
-</section>
+{pass_management_section("kcls")}
+
+{pass_management_section("spl")}
 
 <section class="full">
   <h2>Recent Attempts</h2>
