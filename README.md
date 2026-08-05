@@ -39,7 +39,8 @@ The second command should print nothing.
 
 Do not commit real library card numbers, PINs, SMTP app passwords, screenshots, saved HTML artifacts, or personal booking queues.
 
-One public-history caveat: Git commits include author metadata. If you do not want your personal email address visible on GitHub, configure a GitHub noreply address before future commits, or rewrite existing commit authors before publishing.
+This local repo is configured to use a GitHub noreply email for commit author metadata.
+
 
 ## Quick Start
 
