@@ -166,6 +166,56 @@ class DateAvailabilityParser(HTMLParser):
                 self._current["name"] = re.sub(r"\s+", " ", text)
 
 
+class PassCalendarDayParser(HTMLParser):
+    STATUS_CLASSES = {
+        "s-lc-pass-available": "available",
+        "s-lc-pass-unavailable": "unavailable",
+        "s-lc-pass-not-yet-available": "not yet available",
+        "s-lc-pass-closed": "closed",
+    }
+
+    def __init__(self, target_date: date, pass_url: str) -> None:
+        super().__init__()
+        self.target_date = target_date.isoformat()
+        self.pass_url = pass_url
+        self.status: str | None = None
+        self.booking_url: str | None = None
+        self._in_target_day = False
+        self._day_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attr = {key: value or "" for key, value in attrs}
+        classes = attr.get("class", "").split()
+
+        if tag == "div" and "day" in classes and f"day-{self.target_date}" in classes and not self._in_target_day:
+            self._in_target_day = True
+            self._day_depth = 1
+            return
+
+        if not self._in_target_day:
+            return
+
+        if tag == "div":
+            self._day_depth += 1
+        elif tag == "a" and "/book" in attr.get("href", ""):
+            self.booking_url = urljoin(self.pass_url, attr["href"])
+
+        if tag in {"a", "span"} and "s-lc-pass-availability" in classes:
+            for status_class, status in self.STATUS_CLASSES.items():
+                if status_class in classes:
+                    self.status = status
+                    break
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self._in_target_day:
+            return
+
+        if tag == "div":
+            self._day_depth -= 1
+            if self._day_depth <= 0:
+                self._in_target_day = False
+
+
 def _ensure_playwright_installed() -> None:
     try:
         import playwright  # noqa: F401
@@ -350,6 +400,17 @@ def parse_date_availability(html: str, provider: str = "kcls") -> list[dict[str,
     return parser.options
 
 
+def parse_pass_calendar_day(html: str, target_date: date, pass_url: str) -> dict[str, str]:
+    parser = PassCalendarDayParser(target_date=target_date, pass_url=pass_url)
+    parser.feed(html)
+    result: dict[str, str] = {}
+    if parser.status:
+        result["status"] = parser.status
+    if parser.booking_url:
+        result["booking_url"] = parser.booking_url
+    return result
+
+
 def fetch_live_passes(provider: str = "kcls", headless: bool = True) -> list[dict[str, str]]:
     _ensure_playwright_installed()
     settings = provider_settings(provider)
@@ -385,6 +446,20 @@ def find_booking_url_for_date(page: Any, pass_info: dict[str, Any], target_date:
         if pass_name and option.get("name", "").casefold() == pass_name:
             return booking_url
     return None
+
+
+def inspect_pass_calendar_day(page: Any, pass_info: dict[str, Any], target_date: date) -> dict[str, str]:
+    pass_url = str(pass_info.get("url", ""))
+    if not pass_url:
+        return {}
+
+    provider = str(pass_info.get("provider", "kcls")).casefold()
+    settings = provider_settings(provider)
+    name = str(pass_info.get("name", "pass")).replace(" ", "-").lower()
+    detail_url = f"{pass_url}?date={target_date.isoformat()}"
+    _goto(page, detail_url, selector="#s-lc-pass-availability-content")
+    _capture_artifacts(page, f"{settings['artifact_prefix']}-{name}-{target_date.isoformat()}-calendar")
+    return parse_pass_calendar_day(page.content(), target_date=target_date, pass_url=pass_url)
 
 
 def inspect_reservation_site(provider: str = "kcls", headless: bool = True) -> dict[str, Path]:
@@ -438,7 +513,13 @@ def book_pass_for_date(
     try:
         direct_url = request.pass_info.get("booking_url") or find_booking_url_for_date(page, request.pass_info, request.target_date)
         if not direct_url:
-            return False, "No available booking link found for this pass/date"
+            calendar_day = inspect_pass_calendar_day(page, request.pass_info, request.target_date)
+            direct_url = calendar_day.get("booking_url")
+            if not direct_url:
+                status = calendar_day.get("status")
+                if status:
+                    return False, f"No available booking link found for this pass/date; pass calendar shows {status}"
+                return False, "No available booking link found for this pass/date"
 
         _goto(page, direct_url)
         provider = str(request.pass_info.get("provider", "kcls")).casefold()

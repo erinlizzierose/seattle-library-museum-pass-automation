@@ -187,5 +187,37 @@ class BookingPlanTests(unittest.TestCase):
         self.assertEqual(mock_attempt_bookings.call_count, 1)
 
 
+class SchedulerTimingTests(unittest.TestCase):
+    def test_scheduler_sleep_uses_fast_polling_near_release(self):
+        config = SimpleNamespace(
+            scheduler=SimpleNamespace(run_time="14:00"),
+            schedules={"kcls": SimpleNamespace(run_time="14:00")},
+        )
+
+        sleep_seconds = main.scheduler_sleep_seconds(config, ["kcls"], dt(2026, 8, 5, 13, 59, 30))
+
+        self.assertEqual(sleep_seconds, 0.25)
+
+    def test_scheduler_sleep_wakes_at_start_of_fast_window(self):
+        config = SimpleNamespace(
+            scheduler=SimpleNamespace(run_time="14:00"),
+            schedules={"kcls": SimpleNamespace(run_time="14:00")},
+        )
+
+        sleep_seconds = main.scheduler_sleep_seconds(config, ["kcls"], dt(2026, 8, 5, 13, 58, 55))
+
+        self.assertEqual(sleep_seconds, 5)
+
+    def test_scheduler_sleep_uses_normal_polling_far_from_release(self):
+        config = SimpleNamespace(
+            scheduler=SimpleNamespace(run_time="14:00"),
+            schedules={"kcls": SimpleNamespace(run_time="14:00")},
+        )
+
+        sleep_seconds = main.scheduler_sleep_seconds(config, ["kcls"], dt(2026, 8, 5, 13, 0, 0))
+
+        self.assertEqual(sleep_seconds, 10)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,7 @@
 import unittest
+from datetime import date
 
-from src.booker import parse_date_availability, parse_pass_cards
+from src.booker import parse_date_availability, parse_pass_calendar_day, parse_pass_cards
 
 
 class KclsParsingTests(unittest.TestCase):
@@ -77,6 +78,44 @@ class KclsParsingTests(unittest.TestCase):
         self.assertEqual(
             options[0]["booking_url"],
             "https://spl.libcal.com/passes/Zoo/book?pass=abc&date=2026-07-17",
+        )
+
+    def test_parse_pass_calendar_day_extracts_unavailable_status(self):
+        html = """
+        <div class="day day-Wed day-2026-08-19">
+          <div class="day-number">
+            <span class="s-lc-pass-availability s-lc-pass-unavailable">19</span>
+          </div>
+        </div>
+        """
+
+        day = parse_pass_calendar_day(
+            html,
+            target_date=date(2026, 8, 19),
+            pass_url="https://rooms.kcls.org/passes/8e456682901d",
+        )
+
+        self.assertEqual(day, {"status": "unavailable"})
+
+    def test_parse_pass_calendar_day_extracts_booking_url(self):
+        html = """
+        <div class="day day-Wed day-2026-08-19">
+          <div class="day-number">
+            <a class="s-lc-pass-availability s-lc-pass-available" href="/passes/8e456682901d/book?pass=abc&amp;date=2026-08-19">19</a>
+          </div>
+        </div>
+        """
+
+        day = parse_pass_calendar_day(
+            html,
+            target_date=date(2026, 8, 19),
+            pass_url="https://rooms.kcls.org/passes/8e456682901d",
+        )
+
+        self.assertEqual(day["status"], "available")
+        self.assertEqual(
+            day["booking_url"],
+            "https://rooms.kcls.org/passes/8e456682901d/book?pass=abc&date=2026-08-19",
         )
 
 

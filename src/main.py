@@ -8,6 +8,10 @@ from src.config import load_config, load_dates, load_desired_bookings, load_pass
 from src.notifier import send_test_email, notify_attempt_summary
 
 SUPPORTED_PROVIDERS = ("kcls", "spl")
+FAST_SCHEDULER_POLL_SECONDS = 0.25
+FAST_SCHEDULER_WINDOW_SECONDS = 60
+NORMAL_SCHEDULER_POLL_SECONDS = 10
+SCHEDULER_RUN_WINDOW_MINUTES = 1
 
 
 def compute_target_dates(dates: list[str], days_ahead: int) -> list[datetime]:
@@ -207,6 +211,26 @@ def show_plan(config, provider: str | None = None) -> None:
         print(f"- {target_date.isoformat()}: {pass_info.get('provider', 'kcls').upper()} - {pass_info['name']}")
 
 
+def next_release_time(now: datetime, run_time: str) -> datetime:
+    target = datetime.combine(now.date(), datetime.strptime(run_time, "%H:%M").time())
+    if now >= target + timedelta(minutes=SCHEDULER_RUN_WINDOW_MINUTES):
+        target += timedelta(days=1)
+    return target
+
+
+def scheduler_sleep_seconds(config, providers: list[str], now: datetime) -> float:
+    seconds_until_release = min(
+        (next_release_time(now, get_provider_schedule(config, provider_key).run_time) - now).total_seconds()
+        for provider_key in providers
+    )
+    if seconds_until_release <= FAST_SCHEDULER_WINDOW_SECONDS:
+        return FAST_SCHEDULER_POLL_SECONDS
+    return min(
+        NORMAL_SCHEDULER_POLL_SECONDS,
+        max(FAST_SCHEDULER_POLL_SECONDS, seconds_until_release - FAST_SCHEDULER_WINDOW_SECONDS),
+    )
+
+
 def run_scheduler(config, dry_run: bool = False, provider: str | None = None):
     providers = [provider.casefold()] if provider else list(SUPPORTED_PROVIDERS)
     print("Scheduler started:")
@@ -214,18 +238,19 @@ def run_scheduler(config, dry_run: bool = False, provider: str | None = None):
         schedule = get_provider_schedule(config, provider_key)
         print(f"- {provider_key.upper()} daily at {schedule.run_time}")
 
+    completed_runs: set[tuple[str, str]] = set()
     while True:
         now = datetime.now()
-        ran = False
         for provider_key in providers:
             schedule = get_provider_schedule(config, provider_key)
             target = datetime.combine(now.date(), datetime.strptime(schedule.run_time, "%H:%M").time())
-            if now >= target and now < target + timedelta(minutes=1):
+            run_key = (provider_key, target.date().isoformat())
+            if now >= target and now < target + timedelta(minutes=SCHEDULER_RUN_WINDOW_MINUTES) and run_key not in completed_runs:
                 print(f"Running scheduled {provider_key.upper()} booking task...")
                 run_once(config, dry_run=dry_run, provider=provider_key)
-                ran = True
+                completed_runs.add(run_key)
 
-        time.sleep(61 if ran else 10)
+        time.sleep(scheduler_sleep_seconds(config, providers, datetime.now()))
 
 
 def main() -> None:
