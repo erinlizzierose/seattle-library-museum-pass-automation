@@ -4,6 +4,8 @@ A local Python automation app for booking free museum and attraction passes from
 
 The app keeps a prioritized booking queue, checks each provider's release window, uses Playwright to complete the LibCal reservation flow, logs every attempt, and can email a success or failure summary.
 
+![Museum Pass Scheduler dashboard](docs/dashboard.png)
+
 ## Features
 
 - Separate KCLS and SPL provider schedules, credentials, pass catalogs, and dashboard sections
