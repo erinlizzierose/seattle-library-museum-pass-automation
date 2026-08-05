@@ -5,6 +5,7 @@ from typing import Any
 
 from src.booker import LibraryAccount, attempt_bookings, fetch_live_passes, inspect_reservation_site
 from src.config import load_config, load_dates, load_desired_bookings, load_passes, save_passes
+from src.notifier import send_test_email, notify_attempt_summary
 
 SUPPORTED_PROVIDERS = ("kcls", "spl")
 
@@ -133,6 +134,7 @@ def run_once(config, dry_run: bool = False, provider: str | None = None):
         return
 
     booked_months: set[str] = set()
+    all_results_by_provider: dict[str, list[Any]] = {}
 
     print("Booking plan:")
     for pass_info, target_date in booking_plan:
@@ -158,12 +160,17 @@ def run_once(config, dry_run: bool = False, provider: str | None = None):
             dates=[target_date],
             dry_run=dry_run,
         )
+        all_results_by_provider.setdefault(provider_key, []).extend(result for _, result in results)
 
         for request, result in results:
             status = "SUCCESS" if result.success else "FAILED"
             print(f"{request.pass_info['name']} on {request.target_date}: {status} - {result.message}")
             if result.success:
                 booked_months.add(month_key)
+
+    if not dry_run:
+        for provider_key, results in all_results_by_provider.items():
+            notify_attempt_summary(provider_key, results)
 
 
 def show_plan(config, provider: str | None = None) -> None:
@@ -234,6 +241,7 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1", help="Host for the local web dashboard")
     parser.add_argument("--port", type=int, default=8000, help="Port for the local web dashboard")
     parser.add_argument("--dry-run", action="store_true", help="Simulate bookings without opening a browser")
+    parser.add_argument("--send-test-email", action="store_true", help="Send a test notification email using SMTP settings")
     args = parser.parse_args()
 
     config = load_config()
@@ -244,6 +252,9 @@ def main() -> None:
         show_plan(config, provider=args.provider)
     elif args.schedule:
         run_scheduler(config, dry_run=args.dry_run, provider=args.provider)
+    elif args.send_test_email:
+        if send_test_email():
+            print("Test email sent.")
     elif args.inspect_live_site:
         artifacts = inspect_reservation_site(provider=args.provider or "kcls", headless=not args.headed)
         for label, path in artifacts.items():

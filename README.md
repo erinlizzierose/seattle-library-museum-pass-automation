@@ -53,6 +53,13 @@ A small Python automation project to help reserve KCLS and Seattle Public Librar
    SPL_LIBRARY_EMAIL=...
 
    LIBRARY_ALLOW_LIVE_SUBMIT=0
+
+   NOTIFY_EMAIL_TO=...
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=587
+   SMTP_USERNAME=...
+   SMTP_PASSWORD=...
+   SMTP_FROM=...
    ```
 
    Keep `LIBRARY_ALLOW_LIVE_SUBMIT=0` while testing. The bot will authenticate and prepare the reservation flow, but stop before final submission.
@@ -108,12 +115,44 @@ LIBRARY_ALLOW_LIVE_SUBMIT=1
 
 The local dashboard lets you:
 
+- View upcoming passes from successful future booking attempts
 - Add or remove desired bookings with pass, date, and priority
 - Add or remove passes
 - Review recent booking attempts
 - Run a dry booking attempt without launching a browser
 
 Passes added through the dashboard still need real booking selectors before live automation can reserve them. Use dry-run mode while setting up pass data.
+
+## Notifications
+
+The app sends notification email directly from Python using SMTP settings in `.env`; Oracle Cloud only runs the script on schedule.
+
+Required settings:
+
+```bash
+NOTIFY_EMAIL_ENABLED=1
+NOTIFY_EMAIL_TO=your_email@example.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@example.com
+SMTP_PASSWORD=your_app_password
+SMTP_FROM=your_email@example.com
+```
+
+For Gmail, use an app password rather than your normal Google password. If SMTP settings are missing, booking still runs and the app prints that notifications were skipped.
+
+After adding SMTP settings, send a test email:
+
+```bash
+.venv/bin/python -m src.main --send-test-email
+```
+
+The app sends an email after live provider attempts:
+
+- Success: the booked pass, provider, visit date, and attempt details.
+- Failure: a summary that no pass was booked and each attempted pass result.
+- No matching booking plan: no email.
+- Dry runs: no email.
 
 ## Desired Bookings
 

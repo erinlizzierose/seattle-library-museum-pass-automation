@@ -18,6 +18,7 @@ class AttemptResult:
     attempted_at: str
     message: str = ""
     category: str = ""
+    provider: str = ""
 
 
 def create_attempt_result(
@@ -30,6 +31,7 @@ def create_attempt_result(
     return AttemptResult(
         pass_name=str(pass_info.get("name", "<unnamed>")),
         category=str(pass_info.get("category", "")),
+        provider=str(pass_info.get("provider", "kcls")),
         target_date=target_date.isoformat() if hasattr(target_date, "isoformat") else str(target_date),
         success=success,
         dry_run=dry_run,

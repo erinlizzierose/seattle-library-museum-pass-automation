@@ -25,6 +25,7 @@ This project is starting as a scheduler-enabled booking helper for King County l
 
 ## Future improvements
 
+- Sync currently booked passes from KCLS and SPL library accounts, then use that live account state for the dashboard's Upcoming Passes section so manual cancellations do not leave stale bookings visible.
 - Scrape available dates and compare against desired dates
 - Add a CLI for managing desired passes and dates
 - Replace the local dashboard with a richer web app if remote access is needed

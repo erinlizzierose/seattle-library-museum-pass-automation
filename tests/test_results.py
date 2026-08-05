@@ -34,6 +34,17 @@ class AttemptResultTests(unittest.TestCase):
             self.assertEqual([item.pass_name for item in attempts], ["Zoo", "Museum"])
             self.assertEqual(attempts[0].message, "Second")
 
+    def test_attempt_result_includes_provider(self):
+        result = create_attempt_result(
+            pass_info={"name": "Museum", "category": "museum", "provider": "spl"},
+            target_date="2026-07-17",
+            success=True,
+            dry_run=False,
+            message="Booked",
+        )
+
+        self.assertEqual(result.provider, "spl")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -237,7 +237,8 @@ def _render_home(notice: str = "") -> bytes:
     config = load_config()
     passes = load_passes()
     desired_bookings = load_desired_bookings()
-    attempts = load_attempts(limit=12)
+    all_attempts = load_attempts()
+    attempts = all_attempts[:12]
 
     provider_labels = {
         "kcls": "King County Library System",
@@ -257,6 +258,30 @@ def _render_home(notice: str = "") -> bytes:
             "Bring the printed or electronic pass and photo ID on the selected visit date.",
         ],
     }
+    pass_provider_lookup = {item.get("name", ""): item.get("provider", "kcls") for item in passes}
+
+    def attempt_provider(pass_name: str, provider: str = "") -> str:
+        return provider or str(pass_provider_lookup.get(pass_name, "kcls"))
+
+    upcoming_by_key = {}
+    today = datetime.now().date()
+    for item in all_attempts:
+        if not item.success or item.dry_run:
+            continue
+        try:
+            visit_date = datetime.fromisoformat(item.target_date).date()
+        except ValueError:
+            continue
+        if visit_date < today:
+            continue
+        provider_key = attempt_provider(item.pass_name, item.provider)
+        key = (provider_key, item.pass_name, item.target_date)
+        upcoming_by_key.setdefault(key, item)
+
+    upcoming_passes = sorted(
+        upcoming_by_key.values(),
+        key=lambda item: (item.target_date, attempt_provider(item.pass_name, item.provider), item.pass_name),
+    )
 
     def provider_summary(provider: str) -> str:
         schedule = get_provider_schedule(config, provider)
@@ -361,6 +386,7 @@ def _render_home(notice: str = "") -> bytes:
     attempt_rows = "\n".join(
         f"""<tr>
   <td>{escape(item.attempted_at)}</td>
+  <td>{escape(attempt_provider(item.pass_name, item.provider).upper())}</td>
   <td>{escape(item.pass_name)}</td>
   <td>{escape(item.target_date)}</td>
   <td class="{'status-ok' if item.success else 'status-fail'}">{'Success' if item.success else 'Failed'}</td>
@@ -368,9 +394,28 @@ def _render_home(notice: str = "") -> bytes:
   <td>{escape(item.message)}</td>
 </tr>"""
         for item in attempts
-    ) or "<tr><td colspan='6'>No attempts logged yet.</td></tr>"
+    ) or "<tr><td colspan='7'>No attempts logged yet.</td></tr>"
+
+    upcoming_rows = "\n".join(
+        f"""<tr>
+  <td>{escape(attempt_provider(item.pass_name, item.provider).upper())}</td>
+  <td>{escape(item.pass_name)}</td>
+  <td>{escape(item.target_date)}</td>
+  <td>{escape(item.attempted_at)}</td>
+  <td class="status-ok">Booked</td>
+</tr>"""
+        for item in upcoming_passes
+    ) or "<tr><td colspan='5'>No upcoming passes logged yet.</td></tr>"
 
     content = f"""
+<section class="full">
+  <h2>Upcoming Passes</h2>
+  <table>
+    <thead><tr><th>Provider</th><th>Pass</th><th>Visit Date</th><th>Booked At</th><th>Status</th></tr></thead>
+    <tbody>{upcoming_rows}</tbody>
+  </table>
+</section>
+
 <section class="full">
   <div class="provider-summary">{provider_summary_cards}</div>
 </section>
@@ -416,7 +461,7 @@ def _render_home(notice: str = "") -> bytes:
 <section class="full">
   <h2>Recent Attempts</h2>
   <table>
-    <thead><tr><th>Time</th><th>Pass</th><th>Date</th><th>Status</th><th>Mode</th><th>Message</th></tr></thead>
+    <thead><tr><th>Time</th><th>Provider</th><th>Pass</th><th>Date</th><th>Status</th><th>Mode</th><th>Message</th></tr></thead>
     <tbody>{attempt_rows}</tbody>
   </table>
 </section>
