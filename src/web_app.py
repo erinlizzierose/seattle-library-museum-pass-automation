@@ -48,7 +48,7 @@ def _page(content: str, notice: str = "") -> bytes:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Seattle Library Museum Passes Automation</title>
+  <title>Museum Pass Scheduler</title>
   <style>
     :root {{
       color-scheme: dark;
@@ -228,7 +228,7 @@ def _page(content: str, notice: str = "") -> bytes:
 </head>
 <body>
   <header>
-    <h1>Seattle Library Museum Passes Automation</h1>
+    <h1>Museum Pass Scheduler</h1>
     <p class="muted">Pass priorities, release windows, and booking attempts.</p>
     {notice_html}
   </header>
@@ -578,5 +578,5 @@ class LibraryToolHandler(BaseHTTPRequestHandler):
 
 def run_web_server(host: str = "127.0.0.1", port: int = 8000) -> None:
     server = HTTPServer((host, port), LibraryToolHandler)
-    print(f"Seattle Library Museum Passes Automation running at http://{host}:{port}")
+    print(f"Museum Pass Scheduler running at http://{host}:{port}")
     server.serve_forever()
