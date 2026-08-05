@@ -1,39 +1,61 @@
 # Project Roadmap
 
-This project is starting as a scheduler-enabled booking helper for King County library passes.
+Library Ticket Booker is a local-first automation app for reserving free museum and attraction passes through KCLS and SPL.
 
-## Current MVP goals
+## V1: Complete
 
-- Load desired passes from `data/passes.json`
-- Load desired reservation dates from `data/dates.json`
-- Run once or as a daily scheduler at 2pm
-- Use environment variables for credentials via `.env`
-- Keep booking logic separate from the scheduler
-- Provide a local dashboard for managing passes/dates and reviewing attempts
-- Log booking attempts to `data/results.jsonl`
-- Refresh real KCLS pass options from the live pass directory
-- Resolve available booking links from the live date-based KCLS page
-- Authenticate with library card number and PIN through LibAuth
+- Provider-aware KCLS and SPL booking flows
+- Separate provider credentials from `.env`
+- Separate provider schedules:
+  - SPL at `12:00`, 30-day window
+  - KCLS at `14:00`, 14-day window
+- Live pass catalog refresh for both providers
+- Desired bookings with provider, visit date, pass name, and priority
+- Automatic next-priority defaults in the dashboard
+- One successful booking per provider/month before skipping backups
+- Guarded live mode with `LIBRARY_ALLOW_LIVE_SUBMIT=0`
+- Real submit mode with `LIBRARY_ALLOW_LIVE_SUBMIT=1`
+- Local dashboard for schedules, rules, desired bookings, pass catalogs, upcoming passes, and recent attempts
+- Attempt logging to ignored local `data/results.jsonl`
+- SMTP email notifications for live success/failure summaries
+- Unit tests for planning, parsing, logging, notifications, and dashboard helpers
 
-## Short-term additions
+## Next Milestone: Deployment
 
-- Finish and verify the post-auth reservation form submission flow
-- Add retry logic for failed booking attempts
-- Add notifications for success/failure (email, Slack, etc.)
-- Add validation for credentials and target dates before live runs
-- Add a UI control to refresh passes from KCLS
+- Create an Oracle Cloud VM
+- Install Python, project dependencies, and Playwright Chromium
+- Add `.env` on the VM without committing it
+- Configure Pacific-time cron entries:
+  - SPL shortly after noon
+  - KCLS shortly after 2 p.m.
+- Confirm cron logs and email notifications
+- Document the full Oracle setup with screenshots or exact commands
 
-## Future improvements
+## Short-Term Improvements
 
-- Sync currently booked passes from KCLS and SPL library accounts, then use that live account state for the dashboard's Upcoming Passes section so manual cancellations do not leave stale bookings visible.
-- Scrape available dates and compare against desired dates
-- Add a CLI for managing desired passes and dates
-- Replace the local dashboard with a richer web app if remote access is needed
-- Add a cloud deployment guide for running on a VM
-- Add robust error handling for rate limits, timeouts, and site changes
+- Add dashboard buttons to refresh KCLS and SPL pass catalogs
+- Improve failure classification:
+  - no availability
+  - login failed
+  - missing email/credentials
+  - monthly limit reached
+  - form selector changed
+- Add a startup/preflight check for required credentials, notification config, and Playwright installation
+- Add a simple CLI command for validating `.env` without printing secrets
+- Improve Recent Attempts filtering by provider/status/date
 
-## Notes
+## Future Improvements
 
-- Start with a manual pass list and scheduler.
-- Add dynamic scraping only after the core booking flow works.
-- Keep automation separate from any UI so the backend can be reused later.
+- Sync currently booked passes from KCLS and SPL library accounts, then use live account state for the dashboard's Upcoming Passes section so manual cancellations do not leave stale bookings visible.
+- Scrape available dates and compare them against desired bookings before attempting reservations.
+- Add richer notification channels, such as SMS, Slack, or Discord.
+- Package a cloud deployment guide for Oracle Cloud, systemd, and cron.
+- Add robust handling for rate limits, timeouts, provider downtime, and LibCal UI changes.
+- Consider a hosted dashboard only if remote access becomes necessary.
+
+## Security Notes
+
+- Keep `.env`, `data/desired_bookings.json`, `data/results.jsonl`, and `artifacts/` out of Git.
+- Do not commit real screenshots or HTML artifacts from authenticated sessions.
+- Prefer provider-specific app passwords or SMTP credentials over personal account passwords.
+- Consider using a GitHub noreply email before publishing if commit author privacy matters.

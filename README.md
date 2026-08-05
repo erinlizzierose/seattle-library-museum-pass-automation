@@ -1,170 +1,142 @@
 # Library Ticket Booker
 
-A small Python automation project to help reserve KCLS and Seattle Public Library museum passes on the daily release window.
+A local Python automation app for booking free museum and attraction passes from the King County Library System and The Seattle Public Library.
 
-## What this does
+The app keeps a prioritized booking queue, checks each provider's release window, uses Playwright to complete the LibCal reservation flow, logs every attempt, and can email a success or failure summary.
 
-- Loads a list of desired passes and reservation dates
-- Computes which dates are available 14 days in the future
-- Runs a booking attempt at 2pm local time
-- Provides a local web dashboard for editing passes/dates and reviewing attempts
-- Logs each booking attempt to `data/results.jsonl`
-- Can refresh real KCLS and SPL pass options from their LibCal pass directories
-- Uses Playwright for live LibCal booking pages
-- Keeps automation logic separate from the local UI
+## Features
 
-## Files
+- Separate KCLS and SPL provider schedules, credentials, pass catalogs, and dashboard sections
+- KCLS release window: daily at 2 p.m. for dates 14 days ahead
+- SPL release window: daily after 12 p.m. for dates in the next 30 days
+- Prioritized desired bookings by provider/date
+- One successful booking per provider/month before backup choices are skipped
+- Guarded live mode that stops before final submit unless explicitly enabled
+- Local dashboard for managing desired bookings and reviewing attempts
+- Upcoming passes view based on successful future booking attempts
+- SMTP email notifications for live booking success/failure
+- Real pass catalog refresh from KCLS and SPL LibCal pass directories
 
-- `.env.example` — environment variable template for secrets
-- `config.yaml` — scheduler settings
-- `data/passes.json` — desired pass list
-- `data/dates.json` — desired reservation dates
-- `src/main.py` — CLI entry point and scheduler
-- `src/config.py` — config + data loading
-- `src/booker.py` — booking workflow placeholder
-- `src/results.py` — booking attempt logging
-- `src/web_app.py` — local web dashboard
+## Safety And Privacy
 
-## Quick start
+Secrets and personal booking data are intentionally kept out of Git.
 
-1. Create a Python virtual environment:
+Ignored local files:
 
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
+- `.env`
+- `data/desired_bookings.json`
+- `data/results.jsonl`
+- `artifacts/`
 
-2. Install dependencies:
-
-   ```bash
-   python -m pip install -U pip
-   python -m pip install -e .
-   ```
-
-3. Copy `.env.example` to `.env` and update your library card details; then update `config.yaml`, `data/passes.json`, and `data/dates.json`.
-
-   ```bash
-   KCLS_LIBRARY_CARD_NUMBER=...
-   KCLS_LIBRARY_PIN=...
-   KCLS_LIBRARY_EMAIL=...
-
-   SPL_LIBRARY_CARD_NUMBER=...
-   SPL_LIBRARY_PIN=...
-   SPL_LIBRARY_EMAIL=...
-
-   LIBRARY_ALLOW_LIVE_SUBMIT=0
-
-   NOTIFY_EMAIL_TO=...
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=587
-   SMTP_USERNAME=...
-   SMTP_PASSWORD=...
-   SMTP_FROM=...
-   ```
-
-   Keep `LIBRARY_ALLOW_LIVE_SUBMIT=0` while testing. The bot will authenticate and prepare the reservation flow, but stop before final submission.
-
-4. Run once:
-
-   ```bash
-   python -m src.main --run-once
-   ```
-
-5. Run the scheduler:
-   ```bash
-   python -m src.main --schedule
-   ```
-
-6. Run the local dashboard:
-   ```bash
-   python -m src.main --web
-   ```
-
-   Then open `http://127.0.0.1:8000`.
-
-## Live Provider Setup
-
-Install Playwright support:
+Before publishing, confirm:
 
 ```bash
+git status --short
+git ls-files | rg '(^\.env$|desired_bookings\.json$|results\.jsonl$|artifacts/)'
+```
+
+The second command should print nothing.
+
+Do not commit real library card numbers, PINs, SMTP app passwords, screenshots, saved HTML artifacts, or personal booking queues.
+
+One public-history caveat: Git commits include author metadata. If you do not want your personal email address visible on GitHub, configure a GitHub noreply address before future commits, or rewrite existing commit authors before publishing.
+
+## Quick Start
+
+Create and activate a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
 python -m pip install -e ".[automation]"
 python -m playwright install chromium
 ```
 
-Refresh the real pass list:
+Create your local secret file:
 
 ```bash
-python -m src.main --refresh-passes --provider kcls
-python -m src.main --refresh-passes --provider spl
+cp .env.example .env
 ```
 
-Capture live pages for debugging selectors:
+Fill in `.env`:
 
 ```bash
-python -m src.main --inspect-live-site --provider kcls
-python -m src.main --inspect-live-site --provider spl
+KCLS_LIBRARY_CARD_NUMBER=...
+KCLS_LIBRARY_PIN=...
+KCLS_LIBRARY_EMAIL=...
+
+SPL_LIBRARY_CARD_NUMBER=...
+SPL_LIBRARY_PIN=...
+SPL_LIBRARY_EMAIL=...
+
+LIBRARY_ALLOW_LIVE_SUBMIT=0
 ```
 
-Live booking is guarded. By default, the bot stops before the final reservation submission and saves screenshots/HTML under `artifacts/`. To allow final submission, set this in `.env` only when you are ready:
+Keep `LIBRARY_ALLOW_LIVE_SUBMIT=0` while testing. Set it to `1` only when you are ready for the app to submit real reservations.
 
-```bash
-LIBRARY_ALLOW_LIVE_SUBMIT=1
-```
-
-## Dashboard
-
-The local dashboard lets you:
-
-- View upcoming passes from successful future booking attempts
-- Add or remove desired bookings with pass, date, and priority
-- Add or remove passes
-- Review recent booking attempts
-- Run a dry booking attempt without launching a browser
-
-Passes added through the dashboard still need real booking selectors before live automation can reserve them. Use dry-run mode while setting up pass data.
-
-## Notifications
-
-The app sends notification email directly from Python using SMTP settings in `.env`; Oracle Cloud only runs the script on schedule.
-
-Required settings:
-
-```bash
-NOTIFY_EMAIL_ENABLED=1
-NOTIFY_EMAIL_TO=your_email@example.com
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your_email@example.com
-SMTP_PASSWORD=your_app_password
-SMTP_FROM=your_email@example.com
-```
-
-For Gmail, use an app password rather than your normal Google password. If SMTP settings are missing, booking still runs and the app prints that notifications were skipped.
-
-After adding SMTP settings, send a test email:
-
-```bash
-.venv/bin/python -m src.main --send-test-email
-```
-
-The app sends an email after live provider attempts:
-
-- Success: the booked pass, provider, visit date, and attempt details.
-- Failure: a summary that no pass was booked and each attempted pass result.
-- No matching booking plan: no email.
-- Dry runs: no email.
-
-## Desired Bookings
-
-Use `data/desired_bookings.json` for your personal booking queue. The pass catalog in `data/passes.json` can stay as the full provider-tagged KCLS/SPL list.
-
-Create your local queue from the example:
+Create your personal booking queue:
 
 ```bash
 cp data/desired_bookings.example.json data/desired_bookings.json
 ```
 
-`data/desired_bookings.json` is ignored by Git so you do not publish your personal booking plans.
+`data/desired_bookings.json` is ignored by Git.
+
+## Common Commands
+
+Run the dashboard:
+
+```bash
+.venv/bin/python -m src.main --web
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000
+```
+
+Show today's matching booking plan:
+
+```bash
+.venv/bin/python -m src.main --show-plan
+.venv/bin/python -m src.main --show-plan --provider kcls
+.venv/bin/python -m src.main --show-plan --provider spl
+```
+
+Run one provider once:
+
+```bash
+.venv/bin/python -m src.main --run-once --provider kcls
+.venv/bin/python -m src.main --run-once --provider spl
+```
+
+Run the local scheduler:
+
+```bash
+caffeinate -i .venv/bin/python -m src.main --schedule
+```
+
+On macOS, `caffeinate -i` helps keep the computer awake while the scheduler waits for the noon and 2 p.m. runs.
+
+Refresh public pass catalogs:
+
+```bash
+.venv/bin/python -m src.main --refresh-passes --provider kcls
+.venv/bin/python -m src.main --refresh-passes --provider spl
+```
+
+Capture live pages for selector debugging:
+
+```bash
+.venv/bin/python -m src.main --inspect-live-site --provider kcls
+.venv/bin/python -m src.main --inspect-live-site --provider spl
+```
+
+## Desired Bookings
+
+Desired bookings are stored locally in `data/desired_bookings.json`.
 
 Example:
 
@@ -181,21 +153,68 @@ Example:
     "pass_name": "MOPOP",
     "priority": 2,
     "provider": "kcls"
+  },
+  {
+    "date": "2026-08-05",
+    "pass_name": "National Nordic Museum",
+    "priority": 1,
+    "provider": "spl"
   }
 ]
 ```
 
-For each visit month, lower priority numbers run first. Once a booking succeeds for a month, later backup choices for that same visit month are skipped. This matches KCLS's one museum pass per calendar month limit, based on the museum visit date.
+Lower priority numbers run first. If a booking succeeds, later backup choices for that same provider and visit month are skipped.
 
-The dashboard separates KCLS and SPL desired bookings. Both providers use separate pass lists and separate credentials. A successful booking skips later backup choices for the same provider and visit month.
+## Notifications
 
-## Library Rules
+The app sends email directly from Python via SMTP. Cloud hosting is only responsible for running the script on schedule.
+
+For Gmail, use a Google app password, not your normal Google password:
+
+```bash
+NOTIFY_EMAIL_ENABLED=1
+NOTIFY_EMAIL_TO=your_email@example.com
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@example.com
+SMTP_PASSWORD=your_16_character_app_password
+SMTP_FROM=your_email@example.com
+```
+
+Test notifications:
+
+```bash
+.venv/bin/python -m src.main --send-test-email
+```
+
+Notification behavior:
+
+- Success: email with provider, pass, visit date, and attempt details
+- Failure after live attempts: email with each attempted pass and failure reason
+- No matching booking plan: no email
+- Dry runs: no email
+- Missing SMTP config: booking continues and notification is skipped
+
+## Dashboard
+
+The local dashboard includes:
+
+- Upcoming passes from successful future booking attempts
+- KCLS and SPL schedule/rules panels
+- Separate KCLS and SPL desired booking forms
+- Separate KCLS and SPL pass catalog sections
+- Recent attempt history
+- Provider-specific dry-run buttons
+
+The Upcoming Passes section is currently based on this app's successful attempt log. If a pass is cancelled manually on the library site, the dashboard may stay stale until the future account-sync feature is added.
+
+## Provider Rules
 
 KCLS:
 
 - New passes are released daily at 2 p.m.
 - Passes are available 2 weeks into the future.
-- The default local run time is `14:00`.
+- Default local run time is `14:00`.
 - You can reserve one museum pass per calendar month, counted by visit date.
 - A reserved but unused pass still counts against the monthly limit.
 
@@ -203,68 +222,71 @@ SPL:
 
 - New passes are available daily after 12 p.m.
 - The reservation system shows available passes for the next 30 days.
-- The default local run time is `12:00`.
+- Default local run time is `12:00`.
 - Each library card holder can reserve one pass per calendar month, counted by visit date.
 - Bring the printed or electronic pass and photo ID on the selected visit date.
 
-Check what would run today:
-
-```bash
-.venv/bin/python -m src.main --show-plan
-```
-
-Run one guarded attempt:
-
-```bash
-.venv/bin/python -m src.main --run-once
-```
-
-Leave `LIBRARY_ALLOW_LIVE_SUBMIT=0` until you are ready for the app to click the final Reserve button.
-
 ## Oracle Cloud Cron Deployment
 
-On an Ubuntu VM, install the app, then add a cron entry that runs shortly after 2pm Pacific and writes logs.
+On an Ubuntu VM:
 
-Example cron entries:
+1. Clone the repo.
+2. Install Python dependencies and Playwright Chromium.
+3. Create `.env` on the VM.
+4. Set the VM timezone to Pacific time or configure cron's timezone explicitly.
+5. Add separate cron entries for SPL and KCLS.
+
+Example:
 
 ```cron
 2 12 * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --run-once --provider spl >> /home/ubuntu/library-tool/logs/spl-booking.log 2>&1
 2 14 * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --run-once --provider kcls >> /home/ubuntu/library-tool/logs/kcls-booking.log 2>&1
 ```
 
-Use the VM's local timezone or set the cron timezone explicitly. Check it with:
+Useful checks:
 
 ```bash
 date
 timedatectl
+crontab -l
+tail -100 logs/spl-booking.log
+tail -100 logs/kcls-booking.log
 ```
 
-For the simplest setup, set the VM timezone to Pacific time:
+Set Pacific time if desired:
 
 ```bash
 sudo timedatectl set-timezone America/Los_Angeles
 ```
 
-View installed cron jobs:
+## Tests
+
+Run the test suite:
 
 ```bash
-crontab -l
+.venv/bin/python -m unittest discover -s tests -q
 ```
 
-Confirm cron ran:
+Run a quick syntax check:
 
 ```bash
-tail -100 logs/booking.log
+.venv/bin/python -m py_compile src/booker.py src/config.py src/main.py src/notifier.py src/results.py src/web_app.py
 ```
 
-You can also run a one-minute test cron before the real booking day:
+## Project Structure
 
-```cron
-* * * * * cd /home/ubuntu/library-tool && /home/ubuntu/library-tool/.venv/bin/python -m src.main --show-plan >> /home/ubuntu/library-tool/logs/cron-test.log 2>&1
-```
+- `.env.example` - environment variable template
+- `config.yaml` - provider schedules
+- `data/passes.json` - public provider pass catalog
+- `data/desired_bookings.example.json` - safe example booking queue
+- `src/booker.py` - Playwright booking workflow
+- `src/config.py` - config and JSON data loading
+- `src/main.py` - CLI entry point and scheduler
+- `src/notifier.py` - SMTP email notifications
+- `src/results.py` - attempt logging
+- `src/web_app.py` - local dashboard
+- `tests/` - unit tests
 
-Wait a minute, check `logs/cron-test.log`, then remove the test entry.
+## Disclaimer
 
-## Cloud deployment notes
-
-A cloud VM is a good fit since the script should run reliably at 2pm each day. On a VM, you can use systemd, cron, or a long-running terminal session.
+This is a personal automation project and portfolio example. Use it responsibly, respect library terms and limits, and keep real credentials out of version control.

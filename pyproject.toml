@@ -1,7 +1,7 @@
 [project]
 name = "library-tool"
 version = "0.1.0"
-description = "King County library pass reservation helper"
+description = "Local KCLS and SPL museum pass booking helper"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
