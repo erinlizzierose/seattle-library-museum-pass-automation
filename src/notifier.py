@@ -98,8 +98,8 @@ def send_email(subject: str, body: str, config: EmailConfig | None = None) -> bo
 
 def send_test_email() -> bool:
     return send_email(
-        "Library Ticket Booker test email",
-        "This is a test notification from Library Ticket Booker.",
+        "Seattle Library Museum Passes Automation test email",
+        "This is a test notification from Seattle Library Museum Passes Automation.",
     )
 
 

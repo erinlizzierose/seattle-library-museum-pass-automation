@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Library Ticket Booker is a local-first automation app for reserving free museum and attraction passes through KCLS and SPL.
+Seattle Library Museum Passes Automation is a local-first app for reserving free museum and attraction passes through KCLS and SPL.
 
 ## V1: Complete
 

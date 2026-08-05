@@ -44,7 +44,7 @@ class NotifierTests(unittest.TestCase):
         self.assertTrue(send_test_email())
 
         subject, body = mock_send_email.call_args.args
-        self.assertEqual(subject, "Library Ticket Booker test email")
+        self.assertEqual(subject, "Seattle Library Museum Passes Automation test email")
         self.assertIn("test notification", body)
 
 
