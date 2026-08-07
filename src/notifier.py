@@ -1,5 +1,6 @@
 import os
 import smtplib
+import ssl
 from dataclasses import dataclass
 from email.message import EmailMessage
 
@@ -88,7 +89,7 @@ def send_email(subject: str, body: str, config: EmailConfig | None = None) -> bo
     message.set_content(body)
 
     with smtplib.SMTP(config.host, config.port, timeout=20) as smtp:
-        smtp.starttls()
+        smtp.starttls(context=ssl.create_default_context())
         if config.username and config.password:
             smtp.login(config.username, config.password)
         smtp.send_message(message)

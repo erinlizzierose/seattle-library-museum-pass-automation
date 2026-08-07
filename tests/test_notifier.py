@@ -1,7 +1,8 @@
+import ssl
 import unittest
 from unittest.mock import patch
 
-from src.notifier import build_attempt_summary, email_is_configured, send_test_email, EmailConfig
+from src.notifier import build_attempt_summary, email_is_configured, send_email, send_test_email, EmailConfig
 from src.results import AttemptResult
 
 
@@ -36,6 +37,26 @@ class NotifierTests(unittest.TestCase):
         )
 
         self.assertFalse(email_is_configured(config))
+
+    @patch("src.notifier.smtplib.SMTP")
+    def test_send_email_verifies_server_certificate(self, mock_smtp):
+        config = EmailConfig(
+            host="smtp.example.test",
+            port=587,
+            username="sender@example.test",
+            password="secret",
+            sender="sender@example.test",
+            recipient="recipient@example.test",
+            enabled=True,
+        )
+
+        self.assertTrue(send_email("subject", "body", config))
+
+        smtp = mock_smtp.return_value.__enter__.return_value
+        context = smtp.starttls.call_args.kwargs.get("context")
+        self.assertIsNotNone(context, "starttls must be given an explicit SSL context")
+        self.assertEqual(context.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(context.check_hostname)
 
     @patch("src.notifier.send_email")
     def test_send_test_email_uses_fixed_subject(self, mock_send_email):
