@@ -154,6 +154,7 @@ class BookingPlanTests(unittest.TestCase):
             3,
         )
 
+    @patch("src.main.notify_attempt_summary")
     @patch("src.main.load_passes")
     @patch("src.main.load_desired_bookings")
     @patch("src.main.attempt_bookings")
@@ -164,6 +165,7 @@ class BookingPlanTests(unittest.TestCase):
         mock_attempt_bookings,
         mock_load_desired_bookings,
         mock_load_passes,
+        mock_notify,
     ):
         mock_datetime.now.return_value = dt(2026, 7, 6, 10, 0, 0)
         mock_datetime.fromisoformat.side_effect = lambda s: dt.fromisoformat(s)
@@ -185,6 +187,7 @@ class BookingPlanTests(unittest.TestCase):
             main.run_once(config)
 
         self.assertEqual(mock_attempt_bookings.call_count, 1)
+        mock_notify.assert_called_once()
 
 
 class SchedulerTimingTests(unittest.TestCase):
