@@ -6,6 +6,7 @@ from typing import Any
 from src.booker import LibraryAccount, attempt_bookings, fetch_live_passes, inspect_reservation_site
 from src.config import load_config, load_dates, load_desired_bookings, load_passes, save_passes
 from src.notifier import send_test_email, notify_attempt_summary
+from src.results import load_attempts
 
 SUPPORTED_PROVIDERS = ("kcls", "spl")
 FAST_SCHEDULER_POLL_SECONDS = 0.25
@@ -112,6 +113,31 @@ def visit_month_key(target_date) -> str:
     return target_date.strftime("%Y-%m")
 
 
+def load_booked_months() -> set[str]:
+    """Month keys already booked by past live runs, e.g. {"kcls:2026-08"}.
+
+    Seeds the per-run monthly limit so a backup pass booked weeks after the
+    primary one still counts against the same visit month.
+    """
+    try:
+        attempts = load_attempts()
+    except (OSError, TypeError, ValueError) as exc:
+        print(f"Could not read booking history; monthly limits not applied: {exc}")
+        return set()
+
+    booked: set[str] = set()
+    for attempt in attempts:
+        if not attempt.success or attempt.dry_run:
+            continue
+        try:
+            visit_date = datetime.fromisoformat(attempt.target_date)
+        except (TypeError, ValueError):
+            continue
+        provider_key = str(attempt.provider or "kcls").casefold()
+        booked.add(f"{provider_key}:{visit_month_key(visit_date)}")
+    return booked
+
+
 def run_once(config, dry_run: bool = False, provider: str | None = None):
     passes = load_passes()
     desired_bookings = load_desired_bookings()
@@ -137,7 +163,7 @@ def run_once(config, dry_run: bool = False, provider: str | None = None):
         print(f"No matching dates for {provider_label}.")
         return
 
-    booked_months: set[str] = set()
+    booked_months = load_booked_months()
     all_results_by_provider: dict[str, list[Any]] = {}
 
     print("Booking plan:")
@@ -242,15 +268,24 @@ def run_scheduler(config, dry_run: bool = False, provider: str | None = None):
     while True:
         now = datetime.now()
         for provider_key in providers:
-            schedule = get_provider_schedule(config, provider_key)
-            target = datetime.combine(now.date(), datetime.strptime(schedule.run_time, "%H:%M").time())
-            run_key = (provider_key, target.date().isoformat())
-            if now >= target and now < target + timedelta(minutes=SCHEDULER_RUN_WINDOW_MINUTES) and run_key not in completed_runs:
-                print(f"Running scheduled {provider_key.upper()} booking task...")
-                run_once(config, dry_run=dry_run, provider=provider_key)
-                completed_runs.add(run_key)
+            try:
+                schedule = get_provider_schedule(config, provider_key)
+                target = datetime.combine(now.date(), datetime.strptime(schedule.run_time, "%H:%M").time())
+                run_key = (provider_key, target.date().isoformat())
+                if now >= target and now < target + timedelta(minutes=SCHEDULER_RUN_WINDOW_MINUTES) and run_key not in completed_runs:
+                    print(f"Running scheduled {provider_key.upper()} booking task...")
+                    # Marked before the run so a crash cannot retry in a tight loop.
+                    completed_runs.add(run_key)
+                    run_once(config, dry_run=dry_run, provider=provider_key)
+            except Exception as exc:
+                print(f"Scheduled {provider_key.upper()} run failed; scheduler continuing: {exc}")
 
-        time.sleep(scheduler_sleep_seconds(config, providers, datetime.now()))
+        try:
+            delay = scheduler_sleep_seconds(config, providers, datetime.now())
+        except Exception as exc:
+            print(f"Scheduler timing error; falling back to normal polling: {exc}")
+            delay = NORMAL_SCHEDULER_POLL_SECONDS
+        time.sleep(delay)
 
 
 def main() -> None:
