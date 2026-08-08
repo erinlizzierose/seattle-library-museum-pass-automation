@@ -46,7 +46,7 @@ Seattle Library Museum Passes Automation is a local-first app for reserving free
 
 ## Future Improvements
 
-- Sync currently booked passes from KCLS and SPL library accounts, then use live account state for the dashboard's Upcoming Passes section so manual cancellations do not leave stale bookings visible.
+- Sync currently booked passes from KCLS and SPL library accounts, then use live account state for the dashboard's Upcoming Passes section so manual cancellations do not leave stale bookings visible. This sync should also feed the one-booking-per-provider/month limit in `load_booked_months()`, which currently derives from `data/results.jsonl` attempt history alone. A cancelled pass still counts against its visit month until the matching line is removed from that file by hand.
 - Scrape available dates and compare them against desired bookings before attempting reservations.
 - Add richer notification channels, such as SMS, Slack, or Discord.
 - Package a cloud deployment guide for Oracle Cloud, systemd, and cron.
